@@ -153,3 +153,6 @@ Thumbs.db
 backtest-results/
 trade-history/
 performance-data/
+
+# Local Netlify folder
+.netlify

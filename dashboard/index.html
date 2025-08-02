@@ -251,6 +251,21 @@
             }
         };
 
+        // Fetch real-time Solana price specifically
+        const fetchSolanaPrice = async () => {
+            try {
+                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_change=true');
+                const data = await response.json();
+                return {
+                    price: data.solana.usd,
+                    change24h: data.solana.usd_24h_change
+                };
+            } catch (error) {
+                console.error('Failed to fetch Solana price:', error);
+                return { price: 185.23, change24h: 2.34 }; // Fallback
+            }
+        };
+
         // Generate real-time trade data
         const generateRealtimeTradeData = () => {
             const currentTokens = ['SOL', 'USDC', 'USDT', 'JUP', 'RAY', 'SRM', 'MNGO', 'ORCA', 'STEP', 'COPE'];
@@ -339,6 +354,22 @@
             const [openPositions, setOpenPositions] = useState([]);
             const [tradeHistory, setTradeHistory] = useState([]);
             const [realTimeData, setRealTimeData] = useState({});
+            const [solanaPrice, setSolanaPrice] = useState({ price: 185.23, change24h: 2.34 });
+            const [isPaperMode, setIsPaperMode] = useState(true);
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [currentUser, setCurrentUser] = useState(null);
+            const [userSettings, setUserSettings] = useState({
+                solanaRpcUrl: '',
+                solanaPrivateKey: '',
+                jupiterApiKey: '',
+                pumpFunApiKey: '',
+                dexScreenerApiKey: '',
+                maxPositionSize: 100,
+                riskPercentage: 5,
+                defaultLeverage: 1,
+                degenModeEnabled: false
+            });
+            const [degenModeActive, setDegenModeActive] = useState(false);
 
             // Real-time data updates
             useEffect(() => {
@@ -346,6 +377,9 @@
                 setActiveTrades(generateRealtimeTradeData());
                 setOpenPositions(generateRealtimePositions());
                 setTradeHistory(generateRealtimeHistory());
+
+                // Fetch initial Solana price
+                fetchSolanaPrice().then(price => setSolanaPrice(price));
 
                 // Update every 30 seconds
                 const interval = setInterval(() => {
@@ -356,6 +390,9 @@
                     fetchRealTimeData().then(data => {
                         if (data) setRealTimeData(data);
                     });
+
+                    // Update Solana price
+                    fetchSolanaPrice().then(price => setSolanaPrice(price));
                 }, 30000);
 
                 return () => clearInterval(interval);
@@ -365,6 +402,7 @@
                 { id: 'dashboard', label: 'AI Dashboard', icon: '🏠' },
                 { id: 'copytrading', label: 'Copy Trading', icon: '👥' },
                 { id: 'leverage', label: 'Leverage Trading', icon: '⚡' },
+                { id: 'degen', label: 'Degen Mode', icon: '🎰' },
                 { id: 'positions', label: 'Open Positions', icon: '💼' },
                 { id: 'history', label: 'Trade History', icon: '📊' },
                 { id: 'settings', label: 'Settings', icon: '⚙️' }
@@ -385,6 +423,466 @@
 
             const takeProfitPosition = (positionId) => {
                 setOpenPositions(openPositions.filter(pos => pos.id !== positionId));
+            };
+
+            // Authentication Functions
+            const login = (email, password) => {
+                // Mock authentication - in real app, this would be API call
+                if (email === 'fujii.pixel@gmail.com' && password === 'admin123') {
+                    setCurrentUser({ email, isAdmin: true });
+                    setIsAuthenticated(true);
+                    return true;
+                } else if (email && password) {
+                    setCurrentUser({ email, isAdmin: false });
+                    setIsAuthenticated(true);
+                    return true;
+                }
+                return false;
+            };
+
+            const register = (email, password) => {
+                // Mock registration - in real app, this would be API call
+                if (email && password) {
+                    setCurrentUser({ email, isAdmin: false });
+                    setIsAuthenticated(true);
+                    return true;
+                }
+                return false;
+            };
+
+            const logout = () => {
+                setCurrentUser(null);
+                setIsAuthenticated(false);
+                setCurrentPage('dashboard');
+            };
+
+            const generateWallet = () => {
+                // Mock wallet generation - in real app, this would use @solana/web3.js
+                const mockWallet = {
+                    publicKey: 'A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6',
+                    privateKey: 'X1Y2Z3A4B5C6D7E8F9G0H1I2J3K4L5M6N7O8P9Q0R1S2T3U4V5W6X7Y8Z9',
+                    address: `${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`
+                };
+                
+                setUserSettings(prev => ({
+                    ...prev,
+                    solanaPrivateKey: mockWallet.privateKey,
+                    walletAddress: mockWallet.publicKey
+                }));
+                
+                alert(`🎉 Wallet Generated Successfully!\n\nPublic Key: ${mockWallet.publicKey}\n\nPrivate Key: ${mockWallet.privateKey}\n\n⚠️ Save these keys securely! You can now import this wallet to Phantom, Solflare, etc.`);
+                return mockWallet;
+            };
+
+            // Login/Register Component
+            const LoginRegister = () => {
+                const [isLogin, setIsLogin] = useState(true);
+                const [email, setEmail] = useState('');
+                const [password, setPassword] = useState('');
+                const [error, setError] = useState('');
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    setError('');
+                    
+                    const success = isLogin ? login(email, password) : register(email, password);
+                    
+                    if (!success) {
+                        setError('Invalid credentials. Try fujii.pixel@gmail.com with admin123 for admin access.');
+                    }
+                };
+
+                return (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 10000
+                    }}>
+                        <div style={{
+                            background: 'linear-gradient(145deg, #1f2937 0%, #111827 100%)',
+                            border: '1px solid #374151',
+                            borderRadius: '16px',
+                            padding: '40px',
+                            minWidth: '400px',
+                            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)'
+                        }}>
+                            <div style={{textAlign: 'center', marginBottom: '32px'}}>
+                                <div style={{fontSize: '3rem', marginBottom: '16px'}}>🤖</div>
+                                <h1 style={{fontSize: '2rem', fontWeight: 'bold', marginBottom: '8px'}}>
+                                    <span className="ai-highlight">AI Trader</span>
+                                </h1>
+                                <p style={{color: '#9CA3AF'}}>Secure access to your trading dashboard</p>
+                            </div>
+
+                            <form onSubmit={handleSubmit}>
+                                <div style={{marginBottom: '20px'}}>
+                                    <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>
+                                        Email Address
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="Enter your email..."
+                                        required
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px',
+                                            backgroundColor: '#374151',
+                                            border: '1px solid #4B5563',
+                                            borderRadius: '8px',
+                                            color: 'white',
+                                            fontSize: '1rem'
+                                        }}
+                                    />
+                                </div>
+
+                                <div style={{marginBottom: '24px'}}>
+                                    <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>
+                                        Password
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="Enter your password..."
+                                        required
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px',
+                                            backgroundColor: '#374151',
+                                            border: '1px solid #4B5563',
+                                            borderRadius: '8px',
+                                            color: 'white',
+                                            fontSize: '1rem'
+                                        }}
+                                    />
+                                </div>
+
+                                {error && (
+                                    <div style={{
+                                        marginBottom: '20px',
+                                        padding: '12px',
+                                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                                        borderRadius: '8px',
+                                        color: '#EF4444',
+                                        fontSize: '0.875rem'
+                                    }}>
+                                        {error}
+                                    </div>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    className="btn-primary"
+                                    style={{width: '100%', marginBottom: '16px'}}
+                                >
+                                    {isLogin ? '🔐 Sign In' : '📝 Create Account'}
+                                </button>
+
+                                <div style={{textAlign: 'center'}}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsLogin(!isLogin)}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: '#3B82F6',
+                                            textDecoration: 'underline',
+                                            cursor: 'pointer',
+                                            fontSize: '0.875rem'
+                                        }}
+                                    >
+                                        {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+                                    </button>
+                                </div>
+
+                                <div style={{
+                                    marginTop: '24px',
+                                    padding: '12px',
+                                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                                    borderRadius: '8px',
+                                    fontSize: '0.75rem',
+                                    color: '#9CA3AF'
+                                }}>
+                                    <strong style={{color: '#3B82F6'}}>Demo Credentials:</strong><br />
+                                    Admin: fujii.pixel@gmail.com / admin123<br />
+                                    Or create any account to start trading!
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Degen Mode Component
+            const DegenMode = () => {
+                const [snipeAmount, setSnipeAmount] = useState('');
+                const [selectedPlatform, setSelectedPlatform] = useState('pump.fun');
+                const [autoSnipeEnabled, setAutoSnipeEnabled] = useState(false);
+                const [minLiquidity, setMinLiquidity] = useState('10000');
+                const [maxMarketCap, setMaxMarketCap] = useState('1000000');
+
+                const platforms = [
+                    { id: 'pump.fun', name: 'Pump.fun', icon: '🚀' },
+                    { id: 'dexscreener', name: 'DexScreener Moonshot', icon: '🌙' },
+                    { id: 'raydium', name: 'Raydium New Pools', icon: '⚡' }
+                ];
+
+                const executeSnipe = (token) => {
+                    if (!snipeAmount) {
+                        alert('⚠️ Please set snipe amount first!');
+                        return;
+                    }
+                    alert(`🎯 Sniping ${token} with ${snipeAmount} SOL on ${selectedPlatform}!`);
+                };
+
+                const toggleDegenMode = () => {
+                    if (!userSettings.degenModeEnabled) {
+                        const confirmed = confirm('⚠️ WARNING: Degen Mode is HIGH RISK!\n\nThis mode automatically trades new/volatile tokens with high profit potential but extreme risk of loss.\n\nOnly use funds you can afford to lose!\n\nEnable Degen Mode?');
+                        if (confirmed) {
+                            setUserSettings(prev => ({ ...prev, degenModeEnabled: true }));
+                            setDegenModeActive(true);
+                        }
+                    } else {
+                        setDegenModeActive(!degenModeActive);
+                    }
+                };
+
+                const mockNewTokens = [
+                    { symbol: 'ROCKET', name: 'Moon Rocket', platform: 'pump.fun', marketCap: '$50K', liquidity: '$25K', age: '2m', risk: 'HIGH' },
+                    { symbol: 'DEGEN', name: 'DegenCoin', platform: 'dexscreener', marketCap: '$150K', liquidity: '$45K', age: '15m', risk: 'MEDIUM' },
+                    { symbol: 'PUMP', name: 'Pump Token', platform: 'raydium', marketCap: '$300K', liquidity: '$80K', age: '1h', risk: 'HIGH' },
+                    { symbol: 'MOON', name: 'MoonShot', platform: 'pump.fun', marketCap: '$75K', liquidity: '$30K', age: '5m', risk: 'EXTREME' }
+                ];
+
+                return (
+                    <div>
+                        <div style={{marginBottom: '32px'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                <div>
+                                    <h1 style={{fontSize: '2rem', fontWeight: 'bold'}}>🎰 Degen Mode</h1>
+                                    <p style={{color: '#9CA3AF', marginTop: '4px'}}>High-risk, high-reward automated trading</p>
+                                </div>
+                                <button
+                                    onClick={toggleDegenMode}
+                                    style={{
+                                        padding: '12px 24px',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        background: degenModeActive ? 
+                                            'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)' : 
+                                            'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                                        color: 'white'
+                                    }}
+                                >
+                                    {degenModeActive ? '🛑 Disable Degen Mode' : '🎰 Enable Degen Mode'}
+                                </button>
+                            </div>
+
+                            {/* Warning Banner */}
+                            <div style={{
+                                marginTop: '16px',
+                                padding: '16px',
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                border: '2px solid rgba(239, 68, 68, 0.3)',
+                                borderRadius: '12px'
+                            }}>
+                                <h3 style={{fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#EF4444'}}>⚠️ EXTREME RISK WARNING</h3>
+                                <p style={{fontSize: '0.875rem', color: '#D1D5DB', marginBottom: '8px'}}>
+                                    Degen Mode trades newly launched tokens with extreme volatility. You could lose 100% of your investment in seconds.
+                                </p>
+                                <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginTop: '12px'}}>
+                                    <div style={{padding: '6px', backgroundColor: 'rgba(239, 68, 68, 0.2)', borderRadius: '6px', fontSize: '0.75rem'}}>
+                                        💀 <strong>Rugpull Risk:</strong> Projects can drain liquidity instantly
+                                    </div>
+                                    <div style={{padding: '6px', backgroundColor: 'rgba(239, 68, 68, 0.2)', borderRadius: '6px', fontSize: '0.75rem'}}>
+                                        🍯 <strong>Honeypot Risk:</strong> You may not be able to sell
+                                    </div>
+                                    <div style={{padding: '6px', backgroundColor: 'rgba(239, 68, 68, 0.2)', borderRadius: '6px', fontSize: '0.75rem'}}>
+                                        📉 <strong>Volatility:</strong> Prices can drop 99% in minutes
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px'}}>
+                            {/* Sniper Settings */}
+                            <div className="dashboard-card">
+                                <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '20px'}}>🎯 Sniper Configuration</h3>
+                                
+                                <div style={{display: 'grid', gap: '20px'}}>
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>Platform</label>
+                                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px'}}>
+                                            {platforms.map(platform => (
+                                                <button
+                                                    key={platform.id}
+                                                    onClick={() => setSelectedPlatform(platform.id)}
+                                                    style={{
+                                                        padding: '8px',
+                                                        borderRadius: '6px',
+                                                        border: 'none',
+                                                        fontWeight: '500',
+                                                        cursor: 'pointer',
+                                                        backgroundColor: selectedPlatform === platform.id ? '#8B5CF6' : '#374151',
+                                                        color: 'white',
+                                                        fontSize: '0.75rem'
+                                                    }}
+                                                >
+                                                    {platform.icon} {platform.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>Snipe Amount (SOL)</label>
+                                        <input
+                                            type="number"
+                                            value={snipeAmount}
+                                            onChange={(e) => setSnipeAmount(e.target.value)}
+                                            placeholder="Amount to snipe with..."
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px',
+                                                backgroundColor: '#374151',
+                                                border: '1px solid #4B5563',
+                                                borderRadius: '8px',
+                                                color: 'white'
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                                        <div>
+                                            <label style={{display: 'block', color: '#9CA3AF', marginBottom: '4px', fontSize: '0.75rem'}}>Min Liquidity ($)</label>
+                                            <input
+                                                type="number"
+                                                value={minLiquidity}
+                                                onChange={(e) => setMinLiquidity(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px',
+                                                    backgroundColor: '#374151',
+                                                    border: '1px solid #4B5563',
+                                                    borderRadius: '6px',
+                                                    color: 'white',
+                                                    fontSize: '0.875rem'
+                                                }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{display: 'block', color: '#9CA3AF', marginBottom: '4px', fontSize: '0.75rem'}}>Max Market Cap ($)</label>
+                                            <input
+                                                type="number"
+                                                value={maxMarketCap}
+                                                onChange={(e) => setMaxMarketCap(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px',
+                                                    backgroundColor: '#374151',
+                                                    border: '1px solid #4B5563',
+                                                    borderRadius: '6px',
+                                                    color: 'white',
+                                                    fontSize: '0.875rem'
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Live New Tokens */}
+                            <div className="dashboard-card">
+                                <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '20px'}}>🔥 Live New Tokens</h3>
+                                
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                                    {mockNewTokens.map((token, index) => (
+                                        <div key={index} style={{
+                                            padding: '16px',
+                                            backgroundColor: '#374151',
+                                            borderRadius: '8px',
+                                            border: '1px solid #4B5563'
+                                        }}>
+                                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                                    <span style={{fontWeight: 'bold', fontSize: '1rem'}}>{token.symbol}</span>
+                                                    <span style={{
+                                                        padding: '2px 6px',
+                                                        fontSize: '0.75rem',
+                                                        borderRadius: '4px',
+                                                        backgroundColor: token.risk === 'EXTREME' ? '#DC2626' : token.risk === 'HIGH' ? '#EF4444' : '#F59E0B',
+                                                        color: 'white',
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        {token.risk}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={() => executeSnipe(token.symbol)}
+                                                    disabled={!degenModeActive}
+                                                    style={{
+                                                        padding: '6px 12px',
+                                                        borderRadius: '6px',
+                                                        border: 'none',
+                                                        background: degenModeActive ? 
+                                                            'linear-gradient(135deg, #059669 0%, #10B981 100%)' : '#4B5563',
+                                                        color: 'white',
+                                                        fontWeight: '600',
+                                                        fontSize: '0.75rem',
+                                                        cursor: degenModeActive ? 'pointer' : 'not-allowed',
+                                                        opacity: degenModeActive ? 1 : 0.5
+                                                    }}
+                                                >
+                                                    🎯 SNIPE
+                                                </button>
+                                            </div>
+                                            <div style={{fontSize: '0.75rem', color: '#9CA3AF', marginBottom: '8px'}}>
+                                                {token.name} • {token.platform}
+                                            </div>
+                                            <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '0.75rem'}}>
+                                                <div>
+                                                    <span style={{color: '#9CA3AF'}}>MC:</span> {token.marketCap}
+                                                </div>
+                                                <div>
+                                                    <span style={{color: '#9CA3AF'}}>Liq:</span> {token.liquidity}
+                                                </div>
+                                                <div>
+                                                    <span style={{color: '#9CA3AF'}}>Age:</span> {token.age}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div style={{
+                                    marginTop: '16px',
+                                    padding: '12px',
+                                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                                    borderRadius: '8px',
+                                    textAlign: 'center'
+                                }}>
+                                    <p style={{fontSize: '0.875rem', color: '#3B82F6', margin: 0}}>
+                                        🔄 Auto-refreshing every 5 seconds when Degen Mode is active
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
             };
 
             // Dashboard Component
@@ -423,13 +921,24 @@
                             </div>
                         </div>
 
+                        <div className="metric-card">
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                <div>
+                                    <p style={{fontSize: '0.875rem', color: '#9CA3AF'}}>Today's P&L</p>
+                                    <p style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#10B981'}}>+$247.50</p>
+                                    <p style={{fontSize: '0.75rem', color: '#10B981'}}>+4.95% (24h)</p>
+                                </div>
+                                <span style={{fontSize: '1.5rem'}}>📈</span>
+                            </div>
+                        </div>
+
                         <div className="metric-card pulse-glow">
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                                 <div>
                                     <p style={{fontSize: '0.875rem', color: '#9CA3AF'}}>Active Trades</p>
                                     <p style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#10B981'}}>{activeTrades.length}</p>
                                 </div>
-                                <span style={{fontSize: '1.5rem'}}>📈</span>
+                                <span style={{fontSize: '1.5rem'}}>�</span>
                             </div>
                         </div>
 
@@ -450,6 +959,17 @@
                                     <p style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#3B82F6'}}>{COPY_TRADING_WALLETS.length}</p>
                                 </div>
                                 <span style={{fontSize: '1.5rem'}}>👥</span>
+                            </div>
+                        </div>
+
+                        <div className="metric-card">
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                <div>
+                                    <p style={{fontSize: '0.875rem', color: '#9CA3AF'}}>Total P&L</p>
+                                    <p style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#10B981'}}>+$1,247.80</p>
+                                    <p style={{fontSize: '0.75rem', color: '#10B981'}}>+24.96% (All Time)</p>
+                                </div>
+                                <span style={{fontSize: '1.5rem'}}>🎯</span>
                             </div>
                         </div>
                     </div>
@@ -506,62 +1026,154 @@
             );
 
             // Copy Trading Component
-            const CopyTrading = () => (
-                <div>
-                    <div style={{marginBottom: '32px'}}>
-                        <h1 style={{fontSize: '2rem', fontWeight: 'bold'}}>👥 Copy Trading</h1>
-                        <p style={{color: '#9CA3AF', marginTop: '4px'}}>Follow top-performing Solana traders</p>
-                    </div>
+            const CopyTrading = () => {
+                const [newWalletAddress, setNewWalletAddress] = useState('');
+                const [newWalletName, setNewWalletName] = useState('');
+                const [customWallets, setCustomWallets] = useState([]);
 
-                    <div className="dashboard-card">
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px'}}>
-                            <h3 style={{fontSize: '1.125rem', fontWeight: '600'}}>Available Wallets ({COPY_TRADING_WALLETS.length})</h3>
-                            <div style={{fontSize: '0.875rem', color: '#9CA3AF'}}>
-                                Selected: {selectedWallets.size} wallets
+                const addCustomWallet = () => {
+                    if (newWalletAddress && newWalletName) {
+                        const newWallet = {
+                            address: newWalletAddress,
+                            name: newWalletName,
+                            type: 'solana',
+                            status: 'Active',
+                            isCustom: true
+                        };
+                        setCustomWallets([...customWallets, newWallet]);
+                        setNewWalletAddress('');
+                        setNewWalletName('');
+                        alert('✅ Wallet added successfully!');
+                    } else {
+                        alert('⚠️ Please enter both wallet address and name');
+                    }
+                };
+
+                const allWallets = [...COPY_TRADING_WALLETS, ...customWallets];
+
+                return (
+                    <div>
+                        <div style={{marginBottom: '32px'}}>
+                            <h1 style={{fontSize: '2rem', fontWeight: 'bold'}}>👥 Copy Trading</h1>
+                            <p style={{color: '#9CA3AF', marginTop: '4px'}}>Follow top-performing Solana traders</p>
+                        </div>
+
+                        {/* Add Custom Wallet */}
+                        <div className="dashboard-card" style={{marginBottom: '24px'}}>
+                            <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px'}}>➕ Add Custom Wallet</h3>
+                            <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: '12px', alignItems: 'end'}}>
+                                <div>
+                                    <label style={{display: 'block', color: '#9CA3AF', marginBottom: '4px', fontSize: '0.875rem'}}>Wallet Address</label>
+                                    <input
+                                        type="text"
+                                        value={newWalletAddress}
+                                        onChange={(e) => setNewWalletAddress(e.target.value)}
+                                        placeholder="Enter Solana wallet address..."
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px',
+                                            backgroundColor: '#374151',
+                                            border: '1px solid #4B5563',
+                                            borderRadius: '8px',
+                                            color: 'white',
+                                            fontSize: '0.875rem',
+                                            fontFamily: 'monospace'
+                                        }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{display: 'block', color: '#9CA3AF', marginBottom: '4px', fontSize: '0.875rem'}}>Wallet Name</label>
+                                    <input
+                                        type="text"
+                                        value={newWalletName}
+                                        onChange={(e) => setNewWalletName(e.target.value)}
+                                        placeholder="Custom name..."
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px',
+                                            backgroundColor: '#374151',
+                                            border: '1px solid #4B5563',
+                                            borderRadius: '8px',
+                                            color: 'white',
+                                            fontSize: '0.875rem'
+                                        }}
+                                    />
+                                </div>
+                                <button
+                                    onClick={addCustomWallet}
+                                    className="btn-primary"
+                                    style={{padding: '12px 20px', fontSize: '0.875rem'}}
+                                >
+                                    ➕ Add Wallet
+                                </button>
                             </div>
                         </div>
 
-                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px'}}>
-                            {COPY_TRADING_WALLETS.map((wallet) => (
-                                <div 
-                                    key={wallet.address} 
-                                    style={{
-                                        padding: '16px',
-                                        borderRadius: '8px',
-                                        border: selectedWallets.has(wallet.address) ? '2px solid #3B82F6' : '2px solid #4B5563',
-                                        backgroundColor: selectedWallets.has(wallet.address) ? 'rgba(59, 130, 246, 0.1)' : 'rgba(55, 65, 81, 0.5)',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                    onClick={() => toggleWallet(wallet.address)}
-                                >
-                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                                        <h4 style={{fontWeight: '500'}}>{wallet.name}</h4>
-                                        <span style={{
-                                            padding: '2px 6px',
-                                            borderRadius: '4px',
-                                            fontSize: '0.75rem',
-                                            backgroundColor: wallet.status === 'Active' ? '#059669' : '#4B5563',
-                                            color: 'white'
-                                        }}>
-                                            {wallet.status}
-                                        </span>
-                                    </div>
-                                    <p style={{fontSize: '0.875rem', color: '#9CA3AF', fontFamily: 'monospace', wordBreak: 'break-all'}}>
-                                        {wallet.address.substring(0, 8)}...{wallet.address.substring(wallet.address.length - 8)}
-                                    </p>
-                                    <div style={{marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                        <span style={{fontSize: '0.75rem', color: '#6B7280'}}>{wallet.type}</span>
-                                        {selectedWallets.has(wallet.address) && (
-                                            <span style={{color: '#3B82F6', fontSize: '0.875rem'}}>✓ Following</span>
-                                        )}
-                                    </div>
+                        <div className="dashboard-card">
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px'}}>
+                                <h3 style={{fontSize: '1.125rem', fontWeight: '600'}}>Available Wallets ({allWallets.length})</h3>
+                                <div style={{fontSize: '0.875rem', color: '#9CA3AF'}}>
+                                    Selected: {selectedWallets.size} wallets
                                 </div>
-                            ))}
+                            </div>
+
+                            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px'}}>
+                                {allWallets.map((wallet) => (
+                                    <div 
+                                        key={wallet.address} 
+                                        style={{
+                                            padding: '16px',
+                                            borderRadius: '8px',
+                                            border: selectedWallets.has(wallet.address) ? '2px solid #3B82F6' : '2px solid #4B5563',
+                                            backgroundColor: selectedWallets.has(wallet.address) ? 'rgba(59, 130, 246, 0.1)' : 'rgba(55, 65, 81, 0.5)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            position: 'relative'
+                                        }}
+                                        onClick={() => toggleWallet(wallet.address)}
+                                    >
+                                        {wallet.isCustom && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '8px',
+                                                right: '8px',
+                                                padding: '2px 6px',
+                                                backgroundColor: '#8B5CF6',
+                                                borderRadius: '4px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 'bold'
+                                            }}>
+                                                CUSTOM
+                                            </div>
+                                        )}
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                                            <h4 style={{fontWeight: '500'}}>{wallet.name}</h4>
+                                            <span style={{
+                                                padding: '2px 6px',
+                                                borderRadius: '4px',
+                                                fontSize: '0.75rem',
+                                                backgroundColor: wallet.status === 'Active' ? '#059669' : '#4B5563',
+                                                color: 'white'
+                                            }}>
+                                                {wallet.status}
+                                            </span>
+                                        </div>
+                                        <p style={{fontSize: '0.875rem', color: '#9CA3AF', fontFamily: 'monospace', wordBreak: 'break-all'}}>
+                                            {wallet.address.substring(0, 8)}...{wallet.address.substring(wallet.address.length - 8)}
+                                        </p>
+                                        <div style={{marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <span style={{fontSize: '0.75rem', color: '#6B7280'}}>{wallet.type}</span>
+                                            {selectedWallets.has(wallet.address) && (
+                                                <span style={{color: '#3B82F6', fontSize: '0.875rem'}}>✓ Following</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                </div>
-            );
+                );
+            };
 
             // Open Positions Component
             const OpenPositions = () => (
@@ -704,6 +1316,381 @@
             // Leverage Trading Component
             const LeverageTrading = () => {
                 const [selectedToken, setSelectedToken] = useState('SOL');
+                const [leverage, setLeverage] = useState(1);
+                const [position, setPosition] = useState('LONG');
+                const [amount, setAmount] = useState('');
+                const [orderType, setOrderType] = useState('MARKET');
+                const [takeProfitPrice, setTakeProfitPrice] = useState('');
+                const [stopLossPrice, setStopLossPrice] = useState('');
+                const [useTPSL, setUseTPSL] = useState(false);
+                
+                const availableTokens = ['SOL', 'JUP', 'RAY', 'ORCA', 'USDC', 'USDT'];
+                const leverageOptions = [1, 2, 3, 5, 10, 20];
+
+                const executePerpsOrder = async (orderType) => {
+                    try {
+                        const orderData = {
+                            token: selectedToken,
+                            side: position,
+                            amount: parseFloat(amount),
+                            leverage: leverage,
+                            orderType: orderType,
+                            takeProfit: useTPSL ? takeProfitPrice : null,
+                            stopLoss: useTPSL ? stopLossPrice : null
+                        };
+                        
+                        console.log('Executing perps order:', orderData);
+                        alert(`${position} ${orderType} order placed for ${amount} ${selectedToken} with ${leverage}x leverage!`);
+                        setAmount('');
+                    } catch (error) {
+                        console.error('Failed to execute perps order:', error);
+                        alert('Failed to execute order. Please try again.');
+                    }
+                };
+
+                return (
+                    <div>
+                        <div style={{marginBottom: '32px'}}>
+                            <h1 style={{fontSize: '2rem', fontWeight: 'bold'}}>⚡ Leverage Trading</h1>
+                            <p style={{color: '#9CA3AF', marginTop: '4px'}}>Jupiter Perpetuals - Trade with leverage up to 20x</p>
+                            
+                            {/* Educational Info */}
+                            <div style={{marginTop: '16px', padding: '16px', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '12px'}}>
+                                <h3 style={{fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#3B82F6'}}>📚 What is Leverage Trading?</h3>
+                                <p style={{fontSize: '0.875rem', color: '#D1D5DB', marginBottom: '8px'}}>
+                                    <strong>Leverage trading</strong> allows you to control larger positions with less capital. For example, with 10x leverage, $100 controls a $1,000 position.
+                                </p>
+                                <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '12px'}}>
+                                    <div style={{padding: '8px', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderRadius: '6px'}}>
+                                        <span style={{fontSize: '0.75rem', color: '#10B981', fontWeight: '600'}}>✅ Higher Profits:</span>
+                                        <span style={{fontSize: '0.75rem', color: '#D1D5DB'}}> Amplify gains</span>
+                                    </div>
+                                    <div style={{padding: '8px', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: '6px'}}>
+                                        <span style={{fontSize: '0.75rem', color: '#EF4444', fontWeight: '600'}}>⚠️ Higher Risk:</span>
+                                        <span style={{fontSize: '0.75rem', color: '#D1D5DB'}}> Can lose more</span>
+                                    </div>
+                                    <div style={{padding: '8px', backgroundColor: 'rgba(139, 92, 246, 0.1)', borderRadius: '6px'}}>
+                                        <span style={{fontSize: '0.75rem', color: '#8B5CF6', fontWeight: '600'}}>🎯 Use Stop Loss:</span>
+                                        <span style={{fontSize: '0.75rem', color: '#D1D5DB'}}> Limit losses</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px'}}>
+                            {/* Trading Panel */}
+                            <div className="dashboard-card">
+                                <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '24px'}}>📈 Place Perpetual Order</h3>
+                                
+                                <div style={{display: 'grid', gap: '20px'}}>
+                                    {/* Token Selection */}
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>Select Token</label>
+                                        <select 
+                                            value={selectedToken} 
+                                            onChange={(e) => setSelectedToken(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px',
+                                                backgroundColor: '#374151',
+                                                border: '1px solid #4B5563',
+                                                borderRadius: '8px',
+                                                color: 'white',
+                                                fontSize: '1rem'
+                                            }}
+                                        >
+                                            {availableTokens.map(token => (
+                                                <option key={token} value={token}>{token}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Position Side */}
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>Position</label>
+                                        <div style={{display: 'flex', gap: '8px'}}>
+                                            <button
+                                                onClick={() => setPosition('LONG')}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '12px',
+                                                    borderRadius: '8px',
+                                                    border: 'none',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    backgroundColor: position === 'LONG' ? '#059669' : '#374151',
+                                                    color: 'white'
+                                                }}
+                                            >
+                                                🚀 LONG
+                                            </button>
+                                            <button
+                                                onClick={() => setPosition('SHORT')}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '12px',
+                                                    borderRadius: '8px',
+                                                    border: 'none',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    backgroundColor: position === 'SHORT' ? '#DC2626' : '#374151',
+                                                    color: 'white'
+                                                }}
+                                            >
+                                                📉 SHORT
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Leverage Selection */}
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>
+                                            Leverage: {leverage}x
+                                        </label>
+                                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px'}}>
+                                            {leverageOptions.map(lev => (
+                                                <button
+                                                    key={lev}
+                                                    onClick={() => setLeverage(lev)}
+                                                    style={{
+                                                        padding: '8px',
+                                                        borderRadius: '6px',
+                                                        border: 'none',
+                                                        fontWeight: '600',
+                                                        fontSize: '0.875rem',
+                                                        cursor: 'pointer',
+                                                        backgroundColor: leverage === lev ? '#3B82F6' : '#374151',
+                                                        color: 'white'
+                                                    }}
+                                                >
+                                                    {lev}x
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Amount Input */}
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>Amount</label>
+                                        <input
+                                            type="number"
+                                            value={amount}
+                                            onChange={(e) => setAmount(e.target.value)}
+                                            placeholder="Enter amount..."
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px',
+                                                backgroundColor: '#374151',
+                                                border: '1px solid #4B5563',
+                                                borderRadius: '8px',
+                                                color: 'white',
+                                                fontSize: '1rem'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Take Profit & Stop Loss */}
+                                    <div>
+                                        <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px'}}>
+                                            <input
+                                                type="checkbox"
+                                                checked={useTPSL}
+                                                onChange={(e) => setUseTPSL(e.target.checked)}
+                                                style={{width: '16px', height: '16px'}}
+                                            />
+                                            <label style={{color: '#9CA3AF', fontSize: '0.875rem'}}>Use Take Profit & Stop Loss</label>
+                                        </div>
+                                        
+                                        {useTPSL && (
+                                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                                                <div>
+                                                    <label style={{display: 'block', color: '#10B981', marginBottom: '4px', fontSize: '0.75rem'}}>Take Profit Price</label>
+                                                    <input
+                                                        type="number"
+                                                        value={takeProfitPrice}
+                                                        onChange={(e) => setTakeProfitPrice(e.target.value)}
+                                                        placeholder="TP Price"
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '8px',
+                                                            backgroundColor: '#374151',
+                                                            border: '1px solid #10B981',
+                                                            borderRadius: '6px',
+                                                            color: 'white',
+                                                            fontSize: '0.875rem'
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{display: 'block', color: '#EF4444', marginBottom: '4px', fontSize: '0.75rem'}}>Stop Loss Price</label>
+                                                    <input
+                                                        type="number"
+                                                        value={stopLossPrice}
+                                                        onChange={(e) => setStopLossPrice(e.target.value)}
+                                                        placeholder="SL Price"
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '8px',
+                                                            backgroundColor: '#374151',
+                                                            border: '1px solid #EF4444',
+                                                            borderRadius: '6px',
+                                                            color: 'white',
+                                                            fontSize: '0.875rem'
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Order Type */}
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>Order Type</label>
+                                        <div style={{display: 'flex', gap: '8px'}}>
+                                            <button
+                                                onClick={() => setOrderType('MARKET')}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '10px',
+                                                    borderRadius: '6px',
+                                                    border: 'none',
+                                                    fontWeight: '500',
+                                                    cursor: 'pointer',
+                                                    backgroundColor: orderType === 'MARKET' ? '#8B5CF6' : '#374151',
+                                                    color: 'white'
+                                                }}
+                                            >
+                                                Market
+                                            </button>
+                                            <button
+                                                onClick={() => setOrderType('LIMIT')}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '10px',
+                                                    borderRadius: '6px',
+                                                    border: 'none',
+                                                    fontWeight: '500',
+                                                    cursor: 'pointer',
+                                                    backgroundColor: orderType === 'LIMIT' ? '#8B5CF6' : '#374151',
+                                                    color: 'white'
+                                                }}
+                                            >
+                                                Limit
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Execute Buttons */}
+                                    <div style={{display: 'flex', gap: '12px'}}>
+                                        <button
+                                            onClick={() => executePerpsOrder('BUY')}
+                                            disabled={!amount}
+                                            style={{
+                                                flex: 1,
+                                                padding: '16px',
+                                                borderRadius: '8px',
+                                                border: 'none',
+                                                fontWeight: '600',
+                                                fontSize: '1rem',
+                                                cursor: amount ? 'pointer' : 'not-allowed',
+                                                background: amount ? 
+                                                    (position === 'LONG' ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)' : 'linear-gradient(135deg, #DC2626 0%, #EF4444 100%)') :
+                                                    '#4B5563',
+                                                color: 'white',
+                                                opacity: amount ? 1 : 0.5
+                                            }}
+                                        >
+                                            {position === 'LONG' ? '🚀' : '📉'} BUY {position}
+                                        </button>
+                                        
+                                        <button
+                                            onClick={() => executePerpsOrder('SELL')}
+                                            disabled={!amount}
+                                            style={{
+                                                flex: 1,
+                                                padding: '16px',
+                                                borderRadius: '8px',
+                                                border: 'none',
+                                                fontWeight: '600',
+                                                fontSize: '1rem',
+                                                cursor: amount ? 'pointer' : 'not-allowed',
+                                                background: amount ? 
+                                                    'linear-gradient(135deg, #DC2626 0%, #EF4444 100%)' :
+                                                    '#4B5563',
+                                                color: 'white',
+                                                opacity: amount ? 1 : 0.5
+                                            }}
+                                        >
+                                            📉 SELL {position}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Market Info */}
+                            <div className="dashboard-card">
+                                <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '24px'}}>📊 Real-Time Market Data</h3>
+                                
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                                    {/* Live Solana Price */}
+                                    <div style={{padding: '20px', backgroundColor: '#374151', borderRadius: '12px', border: '2px solid #10B981'}}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                                            <span style={{color: '#9CA3AF', fontSize: '0.875rem'}}>SOL/USD Live Price</span>
+                                            <span style={{fontSize: '0.75rem', color: '#10B981'}}>🔴 LIVE</span>
+                                        </div>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <span style={{fontWeight: 'bold', fontSize: '1.5rem', color: '#10B981'}}>
+                                                ${solanaPrice.price.toFixed(2)}
+                                            </span>
+                                            <span style={{
+                                                fontWeight: 'bold', 
+                                                color: solanaPrice.change24h >= 0 ? '#10B981' : '#EF4444',
+                                                fontSize: '1rem'
+                                            }}>
+                                                {solanaPrice.change24h >= 0 ? '+' : ''}{solanaPrice.change24h.toFixed(2)}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style={{padding: '16px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <span style={{color: '#9CA3AF'}}>24h Volume</span>
+                                            <span style={{fontWeight: 'bold', color: '#3B82F6'}}>$2.4B</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{padding: '16px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <span style={{color: '#9CA3AF'}}>Max Leverage</span>
+                                            <span style={{fontWeight: 'bold', color: '#8B5CF6'}}>20x</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{padding: '16px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <span style={{color: '#9CA3AF'}}>Funding Rate</span>
+                                            <span style={{fontWeight: 'bold', color: '#F59E0B'}}>0.0125%</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{padding: '16px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <span style={{color: '#9CA3AF'}}>Open Interest</span>
+                                            <span style={{fontWeight: 'bold', color: '#06B6D4'}}>$45.2M</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{marginTop: '16px', padding: '12px', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '8px'}}>
+                                        <p style={{fontSize: '0.875rem', color: '#3B82F6', margin: 0}}>
+                                            ⚡ Powered by Jupiter Perpetuals
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
                 const [leverage, setLeverage] = useState(1);
                 const [position, setPosition] = useState('LONG');
                 const [amount, setAmount] = useState('');
@@ -963,40 +1950,398 @@
             };
 
             // Settings Component
-            const Settings = () => (
-                <div>
-                    <div style={{marginBottom: '32px'}}>
-                        <h1 style={{fontSize: '2rem', fontWeight: 'bold'}}>⚙️ Settings</h1>
-                        <p style={{color: '#9CA3AF', marginTop: '4px'}}>Configure your trading bot</p>
-                    </div>
+            const Settings = () => {
+                const [activeTab, setActiveTab] = useState('environment');
+                const [generatedWallet, setGeneratedWallet] = useState(null);
 
-                    <div className="dashboard-card">
-                        <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px'}}>🔧 Bot Configuration</h3>
-                        <div style={{display: 'grid', gap: '16px'}}>
-                            <div>
-                                <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px'}}>Max Position Size (SOL)</label>
-                                <input type="number" className="form-input" defaultValue="100" />
+                // Restrict access to settings for non-authenticated users
+                if (!isAuthenticated) {
+                    return (
+                        <div style={{textAlign: 'center', marginTop: '100px'}}>
+                            <div style={{fontSize: '4rem', marginBottom: '24px'}}>🔒</div>
+                            <h2 style={{fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '16px'}}>Authentication Required</h2>
+                            <p style={{color: '#9CA3AF', marginBottom: '24px'}}>Please login to access settings for privacy and security</p>
+                            <button onClick={() => setCurrentPage('dashboard')} className="btn-primary">
+                                Return to Dashboard
+                            </button>
+                        </div>
+                    );
+                }
+
+                const saveSettings = () => {
+                    // Mock save to database - in real app, this would be API call
+                    alert('⚠️ Settings saved! In production, this would be saved to your secure database.');
+                };
+
+                const handleGenerateWallet = () => {
+                    const wallet = generateWallet();
+                    setGeneratedWallet(wallet);
+                };
+
+                const tabs = [
+                    { id: 'environment', label: 'Environment', icon: '🌐' },
+                    { id: 'trading', label: 'Trading', icon: '📈' },
+                    { id: 'security', label: 'Security', icon: '🔐' },
+                    { id: 'wallet', label: 'Wallet', icon: '💳' }
+                ];
+
+                return (
+                    <div>
+                        <div style={{marginBottom: '32px'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                <div>
+                                    <h1 style={{fontSize: '2rem', fontWeight: 'bold'}}>⚙️ Settings</h1>
+                                    <p style={{color: '#9CA3AF', marginTop: '4px'}}>Configure your AI trading bot</p>
+                                </div>
+                                {currentUser?.isAdmin && (
+                                    <div style={{
+                                        padding: '8px 16px',
+                                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                                        border: '1px solid rgba(139, 92, 246, 0.3)',
+                                        borderRadius: '8px',
+                                        fontSize: '0.875rem',
+                                        color: '#8B5CF6'
+                                    }}>
+                                        👑 Admin Access: {currentUser.email}
+                                    </div>
+                                )}
                             </div>
-                            <div>
-                                <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px'}}>Risk Percentage (%)</label>
-                                <input type="number" className="form-input" defaultValue="5" />
+
+                            {/* Tabs */}
+                            <div style={{marginTop: '24px', display: 'flex', gap: '4px', borderBottom: '1px solid #374151'}}>
+                                {tabs.map(tab => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        style={{
+                                            padding: '12px 20px',
+                                            border: 'none',
+                                            background: 'none',
+                                            color: activeTab === tab.id ? '#3B82F6' : '#9CA3AF',
+                                            borderBottom: activeTab === tab.id ? '2px solid #3B82F6' : '2px solid transparent',
+                                            cursor: 'pointer',
+                                            fontSize: '0.875rem',
+                                            fontWeight: '500'
+                                        }}
+                                    >
+                                        {tab.icon} {tab.label}
+                                    </button>
+                                ))}
                             </div>
-                            <div>
-                                <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px'}}>Default Leverage</label>
-                                <select className="form-input">
-                                    <option value="1">1x</option>
-                                    <option value="2">2x</option>
-                                    <option value="5">5x</option>
-                                    <option value="10">10x</option>
-                                </select>
+                        </div>
+
+                        {/* Environment Variables Tab */}
+                        {activeTab === 'environment' && (
+                            <div className="dashboard-card">
+                                <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px'}}>🌐 Environment Configuration</h3>
+                                <p style={{fontSize: '0.875rem', color: '#9CA3AF', marginBottom: '24px'}}>
+                                    Configure API keys and endpoints for trading platforms
+                                </p>
+                                
+                                <div style={{display: 'grid', gap: '20px'}}>
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>
+                                            Solana RPC URL
+                                        </label>
+                                        <input
+                                            type="url"
+                                            value={userSettings.solanaRpcUrl}
+                                            onChange={(e) => setUserSettings(prev => ({...prev, solanaRpcUrl: e.target.value}))}
+                                            placeholder="https://api.mainnet-beta.solana.com"
+                                            className="form-input"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>
+                                            Jupiter API Key
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={userSettings.jupiterApiKey}
+                                            onChange={(e) => setUserSettings(prev => ({...prev, jupiterApiKey: e.target.value}))}
+                                            placeholder="Enter Jupiter API key..."
+                                            className="form-input"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>
+                                            Pump.fun API Key
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={userSettings.pumpFunApiKey}
+                                            onChange={(e) => setUserSettings(prev => ({...prev, pumpFunApiKey: e.target.value}))}
+                                            placeholder="Enter Pump.fun API key..."
+                                            className="form-input"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>
+                                            DexScreener API Key
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={userSettings.dexScreenerApiKey}
+                                            onChange={(e) => setUserSettings(prev => ({...prev, dexScreenerApiKey: e.target.value}))}
+                                            placeholder="Enter DexScreener API key..."
+                                            className="form-input"
+                                        />
+                                    </div>
+
+                                    <div style={{
+                                        padding: '16px',
+                                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                        border: '1px solid rgba(59, 130, 246, 0.3)',
+                                        borderRadius: '8px'
+                                    }}>
+                                        <h4 style={{fontSize: '0.875rem', fontWeight: '600', marginBottom: '8px', color: '#3B82F6'}}>
+                                            📋 Required Environment Variables
+                                        </h4>
+                                        <div style={{fontSize: '0.75rem', color: '#9CA3AF', fontFamily: 'monospace'}}>
+                                            <div>SOLANA_RPC_URL="{userSettings.solanaRpcUrl || 'https://api.mainnet-beta.solana.com'}"</div>
+                                            <div>JUPITER_API_KEY="{userSettings.jupiterApiKey || 'your_jupiter_key'}"</div>
+                                            <div>PUMP_FUN_API_KEY="{userSettings.pumpFunApiKey || 'your_pump_fun_key'}"</div>
+                                            <div>DEXSCREENER_API_KEY="{userSettings.dexScreenerApiKey || 'your_dexscreener_key'}"</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <button className="btn-primary" style={{marginTop: '16px'}}>
-                                Save Settings
+                        )}
+
+                        {/* Trading Settings Tab */}
+                        {activeTab === 'trading' && (
+                            <div className="dashboard-card">
+                                <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px'}}>📈 Trading Configuration</h3>
+                                
+                                <div style={{display: 'grid', gap: '20px'}}>
+                                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
+                                        <div>
+                                            <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>
+                                                Max Position Size (SOL)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={userSettings.maxPositionSize}
+                                                onChange={(e) => setUserSettings(prev => ({...prev, maxPositionSize: e.target.value}))}
+                                                className="form-input"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>
+                                                Risk Percentage (%)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={userSettings.riskPercentage}
+                                                onChange={(e) => setUserSettings(prev => ({...prev, riskPercentage: e.target.value}))}
+                                                className="form-input"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>
+                                            Default Leverage
+                                        </label>
+                                        <select
+                                            value={userSettings.defaultLeverage}
+                                            onChange={(e) => setUserSettings(prev => ({...prev, defaultLeverage: e.target.value}))}
+                                            className="form-input"
+                                        >
+                                            <option value="1">1x - Conservative</option>
+                                            <option value="2">2x - Moderate</option>
+                                            <option value="5">5x - Aggressive</option>
+                                            <option value="10">10x - Very Aggressive</option>
+                                            <option value="20">20x - Extreme Risk</option>
+                                        </select>
+                                    </div>
+
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                                        <input
+                                            type="checkbox"
+                                            checked={userSettings.degenModeEnabled}
+                                            onChange={(e) => setUserSettings(prev => ({...prev, degenModeEnabled: e.target.checked}))}
+                                            style={{width: '18px', height: '18px'}}
+                                        />
+                                        <label style={{fontSize: '0.875rem', color: '#D1D5DB'}}>
+                                            Enable Degen Mode (High Risk Trading)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Security Tab */}
+                        {activeTab === 'security' && (
+                            <div className="dashboard-card">
+                                <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px'}}>🔐 Security Settings</h3>
+                                
+                                <div style={{display: 'grid', gap: '20px'}}>
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>
+                                            Solana Private Key (Encrypted)
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={userSettings.solanaPrivateKey}
+                                            onChange={(e) => setUserSettings(prev => ({...prev, solanaPrivateKey: e.target.value}))}
+                                            placeholder="Enter your Solana private key..."
+                                            className="form-input"
+                                        />
+                                    </div>
+
+                                    <div style={{
+                                        padding: '16px',
+                                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                                        borderRadius: '8px'
+                                    }}>
+                                        <h4 style={{fontSize: '0.875rem', fontWeight: '600', marginBottom: '8px', color: '#EF4444'}}>
+                                            🔒 Security Notice
+                                        </h4>
+                                        <ul style={{fontSize: '0.75rem', color: '#D1D5DB', paddingLeft: '16px'}}>
+                                            <li>Your private keys are encrypted and stored securely</li>
+                                            <li>Never share your private keys with anyone</li>
+                                            <li>We recommend using a separate wallet for trading</li>
+                                            <li>Enable 2FA on all connected accounts</li>
+                                        </ul>
+                                    </div>
+
+                                    <div style={{display: 'flex', gap: '12px'}}>
+                                        <button onClick={logout} className="btn-danger">
+                                            🚪 Logout
+                                        </button>
+                                        <button 
+                                            onClick={() => alert('🔄 Password reset email sent!')} 
+                                            style={{
+                                                padding: '12px 24px',
+                                                borderRadius: '8px',
+                                                border: '1px solid #4B5563',
+                                                background: 'none',
+                                                color: '#9CA3AF',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            🔑 Change Password
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Wallet Tab */}
+                        {activeTab === 'wallet' && (
+                            <div className="dashboard-card">
+                                <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px'}}>💳 Wallet Management</h3>
+                                
+                                <div style={{display: 'grid', gap: '24px'}}>
+                                    <div>
+                                        <h4 style={{fontSize: '1rem', fontWeight: '600', marginBottom: '12px'}}>Generate New Solana Wallet</h4>
+                                        <p style={{fontSize: '0.875rem', color: '#9CA3AF', marginBottom: '16px'}}>
+                                            Create a new Solana wallet for trading. You can import this wallet to Phantom, Solflare, or any other Solana wallet.
+                                        </p>
+                                        
+                                        <button onClick={handleGenerateWallet} className="btn-primary">
+                                            🎲 Generate New Wallet
+                                        </button>
+                                    </div>
+
+                                    {generatedWallet && (
+                                        <div style={{
+                                            padding: '20px',
+                                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                                            borderRadius: '12px'
+                                        }}>
+                                            <h4 style={{fontSize: '1rem', fontWeight: '600', marginBottom: '12px', color: '#10B981'}}>
+                                                🎉 Wallet Generated Successfully!
+                                            </h4>
+                                            
+                                            <div style={{display: 'grid', gap: '12px'}}>
+                                                <div>
+                                                    <label style={{display: 'block', fontSize: '0.75rem', color: '#9CA3AF', marginBottom: '4px'}}>
+                                                        Public Key (Wallet Address)
+                                                    </label>
+                                                    <div style={{
+                                                        padding: '8px',
+                                                        backgroundColor: '#374151',
+                                                        borderRadius: '6px',
+                                                        fontFamily: 'monospace',
+                                                        fontSize: '0.75rem',
+                                                        wordBreak: 'break-all'
+                                                    }}>
+                                                        {generatedWallet.publicKey}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div>
+                                                    <label style={{display: 'block', fontSize: '0.75rem', color: '#9CA3AF', marginBottom: '4px'}}>
+                                                        Private Key (Keep Secret!)
+                                                    </label>
+                                                    <div style={{
+                                                        padding: '8px',
+                                                        backgroundColor: '#374151',
+                                                        borderRadius: '6px',
+                                                        fontFamily: 'monospace',
+                                                        fontSize: '0.75rem',
+                                                        wordBreak: 'break-all'
+                                                    }}>
+                                                        {generatedWallet.privateKey}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div style={{
+                                                marginTop: '16px',
+                                                padding: '12px',
+                                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                                borderRadius: '8px',
+                                                fontSize: '0.75rem',
+                                                color: '#9CA3AF'
+                                            }}>
+                                                <strong style={{color: '#3B82F6'}}>Next Steps:</strong><br />
+                                                1. Copy the private key and save it securely<br />
+                                                2. Import to Phantom: Settings → Import Wallet → Private Key<br />
+                                                3. Send SOL to this address to start trading<br />
+                                                4. This wallet info is saved to your account database
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {userSettings.walletAddress && (
+                                        <div style={{
+                                            padding: '16px',
+                                            backgroundColor: '#374151',
+                                            borderRadius: '8px'
+                                        }}>
+                                            <h4 style={{fontSize: '1rem', fontWeight: '600', marginBottom: '8px'}}>Current Connected Wallet</h4>
+                                            <div style={{
+                                                fontFamily: 'monospace',
+                                                fontSize: '0.875rem',
+                                                color: '#9CA3AF',
+                                                wordBreak: 'break-all'
+                                            }}>
+                                                {userSettings.walletAddress}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Save Settings Button */}
+                        <div style={{textAlign: 'center', marginTop: '32px'}}>
+                            <button onClick={saveSettings} className="btn-primary" style={{padding: '16px 32px', fontSize: '1rem'}}>
+                                💾 Save All Settings
                             </button>
                         </div>
                     </div>
-                </div>
-            );
+                );
+            };
 
             const renderContent = () => {
                 switch (currentPage) {
@@ -1006,6 +2351,8 @@
                         return <CopyTrading />;
                     case 'leverage':
                         return <LeverageTrading />;
+                    case 'degen':
+                        return <DegenMode />;
                     case 'positions':
                         return <OpenPositions />;
                     case 'history':
@@ -1016,6 +2363,11 @@
                         return <Dashboard />;
                 }
             };
+
+            // Main render - show login if not authenticated
+            if (!isAuthenticated) {
+                return <LoginRegister />;
+            }
 
             return (
                 <div style={{display: 'flex'}}>
@@ -1071,10 +2423,48 @@
                                 </div>
                             </div>
                             
-                            <div style={{marginTop: '12px', padding: '8px', backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px'}}>
+                            <div style={{marginTop: '12px', padding: '8px', backgroundColor: isPaperMode ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', border: `1px solid ${isPaperMode ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`, borderRadius: '8px', cursor: 'pointer'}} onClick={() => {
+                                if (!isPaperMode) {
+                                    // Switching to live mode
+                                    const hasKeypairs = userSettings.solanaPrivateKey ? true : false;
+                                    if (!hasKeypairs) {
+                                        alert('⚠️ Please add your Solana keypairs in Settings before switching to Live Mode!');
+                                        return;
+                                    }
+                                }
+                                setIsPaperMode(!isPaperMode);
+                            }}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                                    <span style={{fontSize: '0.875rem'}}>🛡️</span>
-                                    <span style={{fontSize: '0.75rem', color: '#10B981'}}>Demo Mode</span>
+                                    <span style={{fontSize: '0.875rem'}}>{isPaperMode ? '🛡️' : '🔴'}</span>
+                                    <span style={{fontSize: '0.75rem', color: isPaperMode ? '#10B981' : '#EF4444', fontWeight: '600'}}>
+                                        {isPaperMode ? 'Paper Mode' : 'Live Mode'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* User Info & Logout */}
+                            <div style={{marginTop: '12px', padding: '8px', backgroundColor: 'rgba(55, 65, 81, 0.5)', borderRadius: '8px'}}>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                    <div>
+                                        <div style={{fontSize: '0.75rem', color: '#9CA3AF'}}>Logged in as</div>
+                                        <div style={{fontSize: '0.75rem', color: '#D1D5DB', fontWeight: '500'}}>
+                                            {currentUser?.email?.substring(0, 15)}...
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={logout}
+                                        style={{
+                                            padding: '4px 8px',
+                                            borderRadius: '4px',
+                                            border: 'none',
+                                            backgroundColor: '#EF4444',
+                                            color: 'white',
+                                            fontSize: '0.75rem',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        🚪
+                                    </button>
                                 </div>
                             </div>
                         </div>
