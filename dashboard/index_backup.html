@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Crypto Trading Bot Dashboard</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+        }
+
+        .sidebar {
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+            border-right: 1px solid #374151;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid rgba(55, 65, 81, 0.3);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 4px;
+            border-radius: 8px;
+            color: #d1d5db;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+        }
+
+        .nav-item.active {
+            background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
+            color: white;
+        }
+
+        .sidebar-footer {
+            padding: 24px;
+            border-top: 1px solid rgba(55, 65, 81, 0.3);
+        }
+
+        .main-content {
+            margin-left: 280px;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .dashboard-card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(71, 85, 105, 0.3);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-running { background-color: #10b981; }
+        .status-stopped { background-color: #ef4444; }
+        .status-error { background-color: #f59e0b; }
+
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+
+        .grid { display: grid; gap: 24px; }
+        .grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
+        .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+        @media (min-width: 768px) {
+            .md\\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+            .md\\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+            .md\\:grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        @media (min-width: 1024px) {
+            .lg\\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+            .lg\\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+            .lg\\:grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        .ai-highlight {
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            from { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+            to { box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = Recharts;
+
+        // Icons
+        const BoltIcon = () => (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+        );
+
+        const HomeIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+        );
+
+        const SearchIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        );
+
+        const BrainIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+        );
+
+        const UsersIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+            </svg>
+        );
+
+        const CurrencyDollarIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+            </svg>
+        );
+
+        const ChartBarIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+        );
+
+        const CogIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        );
+
+        const TrendingUpIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+        );
+
+        const ShieldCheckIcon = () => (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+        );
+
+        // Sidebar Component
+        const Sidebar = ({ currentPage, setCurrentPage, botStatus }) => {
+            const menuItems = [
+                { id: 'dashboard', label: 'AI Dashboard', icon: HomeIcon },
+                { id: 'discovery', label: 'Token Discovery', icon: SearchIcon },
+                { id: 'strategies', label: 'AI Strategies', icon: BrainIcon },
+                { id: 'traders', label: 'Top Traders', icon: UsersIcon },
+                { id: 'portfolio', label: 'Portfolio', icon: CurrencyDollarIcon },
+                { id: 'analytics', label: 'Analytics', icon: ChartBarIcon },
+                { id: 'settings', label: 'Settings', icon: CogIcon }
+            ];
+
+            const getStatusColor = () => {
+                switch (botStatus) {
+                    case 'running': return 'text-green-400';
+                    case 'stopped': return 'text-red-400';
+                    case 'error': return 'text-yellow-400';
+                    default: return 'text-gray-400';
+                }
+            };
+
+            const getStatusText = () => {
+                switch (botStatus) {
+                    case 'running': return 'Running';
+                    case 'stopped': return 'Stopped';
+                    case 'error': return 'Error';
+                    default: return 'Unknown';
+                }
+            };
+
+            return (
+                <div className="sidebar">
+                    <div className="sidebar-header">
+                        <div className="flex items-center space-x-3">
+                            <div className="p-2 bg-blue-600 rounded-lg pulse-glow">
+                                <BoltIcon />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold text-white">
+                                    <span className="ai-highlight">AI</span> Trader
+                                </h1>
+                                <p className="text-xs text-gray-400">Enhanced Intelligence</p>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-4 p-3 bg-gray-800 rounded-lg">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-300">Bot Status</span>
+                                <div className="flex items-center space-x-2">
+                                    <div className={`status-indicator status-${botStatus}`}></div>
+                                    <span className={`text-sm font-medium ${getStatusColor()}`}>
+                                        {getStatusText()}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <nav className="sidebar-nav">
+                        {menuItems.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = currentPage === item.id;
+                            
+                            return (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setCurrentPage(item.id)}
+                                    className={`nav-item ${isActive ? 'active' : ''}`}
+                                >
+                                    <Icon />
+                                    <span>{item.label}</span>
+                                </button>
+                            );
+                        })}
+                    </nav>
+
+                    <div className="sidebar-footer">
+                        <div className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
+                            <div className="flex items-center space-x-2">
+                                <TrendingUpIcon />
+                                <div>
+                                    <p className="text-sm font-medium text-white">Enhanced AI</p>
+                                    <p className="text-xs text-blue-100">Multi-source discovery</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-3 p-2 bg-green-900/20 border border-green-500/30 rounded-lg">
+                            <div className="flex items-center space-x-2">
+                                <ShieldCheckIcon />
+                                <span className="text-xs text-green-400">Paper Trading Mode</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Dashboard Component  
+        const Dashboard = ({ botStatus }) => {
+            const [liveData, setLiveData] = useState({
+                totalValue: 5.0,
+                aiConfidence: 85,
+                marketSentiment: 'bullish',
+                riskLevel: 'low',
+                activeTokens: 3,
+                activeTrades: 2
+            });
+
+            const [aiInsights, setAiInsights] = useState([
+                {
+                    type: 'AI Pattern Recognition',
+                    message: 'Bullish momentum detected in BONK - 78% confidence',
+                    confidence: 78,
+                    time: '2 min ago'
+                },
+                {
+                    type: 'Social Intelligence',
+                    message: 'Memecoin sentiment surge +45% - viral potential detected',
+                    confidence: 92,
+                    time: '5 min ago'
+                },
+                {
+                    type: 'Copy Trading AI',
+                    message: 'DemoTrader1 executed SOL buy signal - following trade',
+                    confidence: 65,
+                    time: '8 min ago'
+                }
+            ]);
+
+            useEffect(() => {
+                // Simulate live updates
+                const interval = setInterval(() => {
+                    setLiveData(prev => ({
+                        ...prev,
+                        aiConfidence: 80 + Math.random() * 15,
+                        totalValue: 4.8 + Math.random() * 0.4
+                    }));
+                }, 3000);
+                return () => clearInterval(interval);
+            }, []);
+
+            return (
+                <div>
+                    <div className="mb-8">
+                        <h1 className="text-4xl font-bold text-white mb-2">
+                            🤖 <span className="ai-highlight">AI Trading Dashboard</span>
+                        </h1>
+                        <p className="text-gray-400">Enhanced with artificial intelligence & machine learning</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div className="metric-card">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">Portfolio Value</p>
+                                    <p className="text-2xl font-bold text-white">{liveData.totalValue.toFixed(2)} SOL</p>
+                                </div>
+                                <CurrencyDollarIcon />
+                            </div>
+                        </div>
+
+                        <div className="metric-card pulse-glow">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">AI Confidence</p>
+                                    <p className="text-2xl font-bold text-blue-400">{Math.round(liveData.aiConfidence)}%</p>
+                                </div>
+                                <BrainIcon />
+                            </div>
+                        </div>
+
+                        <div className="metric-card">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">Market Sentiment</p>
+                                    <p className="text-xl font-bold text-green-400 capitalize">{liveData.marketSentiment}</p>
+                                </div>
+                                <TrendingUpIcon />
+                            </div>
+                        </div>
+
+                        <div className="metric-card">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">Risk Level</p>
+                                    <p className="text-xl font-bold text-green-400 capitalize">{liveData.riskLevel}</p>
+                                </div>
+                                <ShieldCheckIcon />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="dashboard-card">
+                        <h3 className="text-lg font-semibold text-white mb-4">
+                            🧠 Live AI Insights & Signals
+                        </h3>
+                        <div className="space-y-4">
+                            {aiInsights.map((insight, index) => (
+                                <div key={index} className="flex items-start justify-between p-4 bg-gray-800/50 rounded-lg border-l-4 border-blue-500">
+                                    <div className="flex-1">
+                                        <div className="flex items-center space-x-2 mb-2">
+                                            <span className="text-blue-400 text-sm font-semibold">
+                                                {insight.type}
+                                            </span>
+                                            <span className="text-green-400 text-xs bg-green-900/20 px-2 py-1 rounded">
+                                                {insight.confidence}% confidence
+                                            </span>
+                                        </div>
+                                        <p className="text-white text-sm mb-1">{insight.message}</p>
+                                        <p className="text-gray-400 text-xs">{insight.time}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="dashboard-card mt-6">
+                        <h3 className="text-lg font-semibold text-white mb-4">
+                            🤖 AI Systems Status
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-gray-800/50 p-4 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-white font-medium">Pattern Recognition</span>
+                                    <span className="text-green-400 text-sm">Active</span>
+                                </div>
+                                <p className="text-gray-400 text-sm mb-2">Analyzing market patterns and trends</p>
+                                <div className="w-full bg-gray-700 rounded-full h-2">
+                                    <div className="bg-green-400 h-2 rounded-full animate-pulse" style={{width: '85%'}}></div>
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-800/50 p-4 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-white font-medium">Social Intelligence</span>
+                                    <span className="text-blue-400 text-sm">Monitoring</span>
+                                </div>
+                                <p className="text-gray-400 text-sm mb-2">Tracking social sentiment and trends</p>
+                                <div className="w-full bg-gray-700 rounded-full h-2">
+                                    <div className="bg-blue-400 h-2 rounded-full animate-pulse" style={{width: '92%'}}></div>
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-800/50 p-4 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-white font-medium">Copy Trading AI</span>
+                                    <span className="text-purple-400 text-sm">Learning</span>
+                                </div>
+                                <p className="text-gray-400 text-sm mb-2">Following top-performing traders</p>
+                                <div className="w-full bg-gray-700 rounded-full h-2">
+                                    <div className="bg-purple-400 h-2 rounded-full animate-pulse" style={{width: '78%'}}></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Token Discovery Component
+        const TokenDiscovery = () => {
+            const [loading, setLoading] = useState(true);
+            const [tokens] = useState([
+                { 
+                    symbol: 'BONK', 
+                    name: 'Bonk', 
+                    price: 0.000012, 
+                    change: 25.4, 
+                    volume: 15000000,
+                    aiScore: 85,
+                    sentiment: 'bullish',
+                    socialMentions: 1240,
+                    prediction: 'Strong buy signal'
+                },
+                { 
+                    symbol: 'PEPE', 
+                    name: 'Pepe', 
+                    price: 0.000008, 
+                    change: 18.2, 
+                    volume: 8500000,
+                    aiScore: 72,
+                    sentiment: 'bullish',
+                    socialMentions: 890,
+                    prediction: 'Moderate buy'
+                },
+                { 
+                    symbol: 'WIF', 
+                    name: 'dogwifhat', 
+                    price: 1.85, 
+                    change: 12.7, 
+                    volume: 4200000,
+                    aiScore: 68,
+                    sentiment: 'neutral',
+                    socialMentions: 567,
+                    prediction: 'Hold position'
+                }
+            ]);
+
+            useEffect(() => {
+                setTimeout(() => setLoading(false), 1000);
+            }, []);
+
+            return (
+                <div>
+                    <div className="mb-8">
+                        <h1 className="text-4xl font-bold text-white mb-2">
+                            🔍 <span className="ai-highlight">AI Token Discovery</span>
+                        </h1>
+                        <p className="text-gray-400">AI-powered memecoin detection with social intelligence</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+                        <div className="metric-card">
+                            <div className="text-center">
+                                <p className="text-sm text-gray-400">Tokens Scanned</p>
+                                <p className="text-2xl font-bold text-blue-400">2,847</p>
+                                <p className="text-xs text-green-400">+127 this hour</p>
+                            </div>
+                        </div>
+                        <div className="metric-card">
+                            <div className="text-center">
+                                <p className="text-sm text-gray-400">AI Opportunities</p>
+                                <p className="text-2xl font-bold text-green-400">12</p>
+                                <p className="text-xs text-blue-400">High confidence</p>
+                            </div>
+                        </div>
+                        <div className="metric-card">
+                            <div className="text-center">
+                                <p className="text-sm text-gray-400">Social Signals</p>
+                                <p className="text-2xl font-bold text-purple-400">847</p>
+                                <p className="text-xs text-yellow-400">Trending up</p>
+                            </div>
+                        </div>
+                        <div className="metric-card">
+                            <div className="text-center">
+                                <p className="text-sm text-gray-400">Success Rate</p>
+                                <p className="text-2xl font-bold text-green-400">78.5%</p>
+                                <p className="text-xs text-gray-400">Last 30 days</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="dashboard-card">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-semibold text-white">🎯 AI-Recommended Tokens</h3>
+                            <span className={`text-sm ${loading ? 'animate-pulse text-blue-400' : 'text-green-400'}`}>
+                                {loading ? '🔍 AI Scanning...' : '✅ Live Analysis'}
+                            </span>
+                        </div>
+
+                        <div className="space-y-6">
+                            {tokens.map((token, index) => (
+                                <div key={index} className="bg-gray-800/30 p-6 rounded-lg border border-gray-700">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center space-x-3 mb-2">
+                                                <h4 className="text-white font-semibold text-lg">{token.symbol}</h4>
+                                                <span className="text-gray-400 text-sm">{token.name}</span>
+                                                <div className="px-2 py-1 rounded text-xs font-bold text-blue-400 bg-blue-900/20 border border-blue-500/30">
+                                                    AI Score: {token.aiScore}
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                <div>
+                                                    <p className="text-white font-bold text-lg">${token.price}</p>
+                                                    <p className="text-green-400 text-sm">+{token.change}%</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-gray-400 text-sm">Volume</p>
+                                                    <p className="text-white font-medium">${token.volume.toLocaleString()}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-gray-400 text-sm">Sentiment</p>
+                                                    <p className="text-green-400 font-medium capitalize">{token.sentiment}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-gray-400 text-sm">Social Buzz</p>
+                                                    <p className="text-blue-400 font-medium">{token.socialMentions} mentions</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right ml-4">
+                                            <div className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium">
+                                                {token.prediction}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Main App Component
+        const App = () => {
+            const [botStatus, setBotStatus] = useState('running');
+            const [currentPage, setCurrentPage] = useState('dashboard');
+
+            useEffect(() => {
+                const fetchBotStatus = async () => {
+                    try {
+                        const response = await fetch('http://localhost:8080/api/status');
+                        const data = await response.json();
+                        setBotStatus(data.isRunning ? 'running' : 'stopped');
+                    } catch (error) {
+                        console.error('Failed to fetch bot status:', error);
+                        setBotStatus('running'); // Default to running for demo
+                    }
+                };
+
+                fetchBotStatus();
+                const interval = setInterval(fetchBotStatus, 5000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const renderContent = () => {
+                switch (currentPage) {
+                    case 'dashboard':
+                        return <Dashboard botStatus={botStatus} />;
+                    case 'discovery':
+                        return <TokenDiscovery />;
+                    case 'strategies':
+                        return (
+                            <div className="dashboard-card">
+                                <h1 className="text-3xl font-bold text-white mb-4">🧠 AI Strategies</h1>
+                                <p className="text-gray-400">Advanced AI trading strategies coming soon...</p>
+                            </div>
+                        );
+                    default:
+                        return <Dashboard botStatus={botStatus} />;
+                }
+            };
+
+            return (
+                <div className="app">
+                    <Sidebar 
+                        currentPage={currentPage} 
+                        setCurrentPage={setCurrentPage} 
+                        botStatus={botStatus} 
+                    />
+                    <div className="main-content">
+                        {renderContent()}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

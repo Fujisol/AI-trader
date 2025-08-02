@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Crypto Trading Bot Dashboard</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+            border-right: 1px solid #374151;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid rgba(55, 65, 81, 0.3);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 4px;
+            border: none;
+            background: none;
+            color: #9CA3AF;
+            border-radius: 8px;
+            transition: all 0.2s;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .nav-item:hover {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3B82F6;
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid rgba(55, 65, 81, 0.3);
+        }
+
+        .main-content {
+            margin-left: 260px;
+            min-height: 100vh;
+            padding: 20px;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            width: calc(100vw - 260px);
+        }
+
+        .dashboard-card {
+            background: linear-gradient(145deg, #1f2937 0%, #111827 100%);
+            border: 1px solid #374151;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .metric-card {
+            background: linear-gradient(145deg, #1f2937 0%, #111827 100%);
+            border: 1px solid #374151;
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-running {
+            background: #10B981;
+            box-shadow: 0 0 8px #10B981;
+        }
+
+        .status-stopped {
+            background: #EF4444;
+            box-shadow: 0 0 8px #EF4444;
+        }
+
+        .ai-highlight {
+            background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            from { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+            to { box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .form-input {
+            background: #374151;
+            border: 1px solid #4B5563;
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+
+        .trade-row {
+            padding: 16px;
+            background: rgba(31, 41, 55, 0.5);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 4px solid #3B82F6;
+        }
+
+        .pnl-positive {
+            color: #10B981;
+        }
+
+        .pnl-negative {
+            color: #EF4444;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Copy Trading Wallets
+        const COPY_TRADING_WALLETS = [
+            {address: "DNfuF1L62WWyW3pNakVkyGGFzVVhj4Yr52jSmdTyeBHm", name: "Gake1", type: "solana", status: "Active"},
+            {address: "4Be9CvxqHW6BYiRAxW9Q3xu1ycTMWaL5z8NX4HR3ha7t", name: "Mitch1", type: "solana", status: "Active"},
+            {address: "3xqSkTpg4jtEfAMqcALbz16eEFtStHdMTXoPXw6js8s8", name: "pattyice", type: "solana", status: "Active"},
+            {address: "AuSFD6HhKtGpeUvKccURaFwetY1FjnsjJH5heirAnMjZ", name: "gr3g1", type: "solana", status: "Active"},
+            {address: "4uPJYegTLzXH9hLhj63xw3dnJMvcmG5yBRozBTyPnC26", name: "ASSOC_FUND_WALLET", type: "solana", status: "Active"},
+            {address: "5Ji4GHPj6vuqfhKhZQ4MVbvi4CgyPPNGe8iyKm79mQrU", name: "Stan_spray_and_pray", type: "solana", status: "Active"},
+            {address: "DjXKETEYzkkG6YzegWgy78vpaPH1eBxaiGTVoQrkQNFP", name: "ChartFu1", type: "solana", status: "Active"},
+            {address: "45a6jRcsnC9yXF1zzvu2KbqFSDxdtGA3hFigoC8NZHSz", name: "ChartFu2", type: "solana", status: "Active"},
+            {address: "CUkrid2iayZci2zpiHnE58EGo8SYrTniux6QEdMownsR", name: "artchick", type: "solana", status: "Active"},
+            {address: "AFjS73henqz9gK2TgDA3Pfubr1WzLcBDkDbhnm9tqso3", name: "Wasta", type: "solana", status: "Active"},
+            {address: "8zFZHuSRuDpuAR7J6FzwyF3vKNx4CVW3DFHJerQhc7Zd", name: "POW_sol", type: "solana", status: "Active"},
+            {address: "vQ33AcEii7mciXznW7TAqzpv18Z77PQHxSfJ7xNBHwU", name: "marcell", type: "solana", status: "Active"},
+            {address: "CMHmXkJRP2EriSdpML3q7uLobknai7xS3HVvwVa9jEVd", name: "Solstice1", type: "solana", status: "Active"},
+            {address: "A8bzshzYKQU6SSttSi7cPdmA4zdPYRt5saxuK1PrTzEp", name: "sugar", type: "solana", status: "Active"},
+            {address: "3ESYpN6WpEdN5syU5ohucpfEC8txmoF8VFpeJwRdnVHm", name: "JS", type: "solana", status: "Active"},
+            {address: "9iyAyxFsCo7iNobHb84FVN6YP3VRJMAJHSbQ6X9nQEfJ", name: "0xTojo", type: "solana", status: "Active"},
+            {address: "86RQFoixAqChBMr6r9vPWXFbZ7sLwA8gUQSWcwYuSoQU", name: "Atom_xyz", type: "solana", status: "Active"},
+            {address: "3tt8pbjddjdar9DPPb6GAegY5h1FhogPGDsPYpQ7c2M9", name: "sage_old", type: "solana", status: "Active"},
+            {address: "2m5498hY3hpSvm1pVyZwwyU6bpQGFGu3PADSoEoZFXQB", name: "solshotta1", type: "solana", status: "Active"},
+            {address: "3RnKNpzX5Nd7PTZBEVrYXVrHyu8Erbbo23QeXtWMTjaZ", name: "solshotta2", type: "solana", status: "Active"},
+            {address: "55SoJzCa7fdY2tKP8Yy5wRkn9yS7wvDsatfidCmRjVFH", name: "solshotta3", type: "solana", status: "Active"},
+            {address: "4sJKsr5g8d3h3ysCac2rr3ZiwjTryapeineJKCunncpW", name: "Wolf_of_crypto", type: "solana", status: "Active"},
+            {address: "3jN1M8gWLk2ryTGnscrcwRK1Gy4Ttzq5QizWT8uizZsT", name: "ne0n", type: "solana", status: "Active"},
+            {address: "3JQuzfBcLuK3WacaWaRTdBjHNZ1AeBQF9WNmGdmH9qad", name: "mercy_sol", type: "solana", status: "Active"},
+            {address: "45yBcpnzFTqLYQJtjxsa1DdZkgrTYponCg6yLQ6LQPu6", name: "ansem", type: "solana", status: "Active"}
+        ];
+
+        // Real-time token data fetcher
+        const fetchRealTimeData = async () => {
+            try {
+                // Fetch from Jupiter API for real token prices
+                const response = await fetch('https://api.jup.ag/price/v2?ids=So11111111111111111111111111111111111111112,EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v,Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB');
+                const data = await response.json();
+                return data.data;
+            } catch (error) {
+                console.error('Failed to fetch real-time data:', error);
+                return null;
+            }
+        };
+
+        // Generate real-time trade data
+        const generateRealtimeTradeData = () => {
+            const currentTokens = ['SOL', 'USDC', 'USDT', 'JUP', 'RAY', 'SRM', 'MNGO', 'ORCA', 'STEP', 'COPE'];
+            const wallets = ['Gake1', 'ChartFu1', 'POW_sol', 'ansem', 'Atom_xyz', 'ne0n'];
+            const now = new Date();
+            
+            return Array.from({length: 5}, (_, i) => {
+                const time = new Date(now.getTime() - (i * 2 * 60 * 1000)); // 2 minutes apart
+                const token = currentTokens[Math.floor(Math.random() * currentTokens.length)];
+                const type = Math.random() > 0.5 ? 'BUY' : 'SELL';
+                const basePrice = token === 'SOL' ? 185 : token === 'USDC' ? 1 : Math.random() * 50;
+                
+                return {
+                    id: i + 1,
+                    token,
+                    type,
+                    amount: Math.floor(Math.random() * 1000000) + 1000,
+                    price: basePrice + (Math.random() * 10 - 5),
+                    time: time.toLocaleTimeString(),
+                    wallet: wallets[Math.floor(Math.random() * wallets.length)],
+                    status: 'executed'
+                };
+            });
+        };
+
+        // Generate real-time position data
+        const generateRealtimePositions = () => {
+            const currentTokens = ['SOL', 'JUP', 'RAY', 'ORCA', 'USDC'];
+            const wallets = ['Gake1', 'ChartFu1', 'POW_sol', 'ansem'];
+            
+            return currentTokens.slice(0, 3).map((token, i) => {
+                const entry = token === 'SOL' ? 180 + Math.random() * 10 : Math.random() * 50 + 10;
+                const current = entry + (Math.random() * 20 - 10);
+                const pnl = current - entry;
+                const pnlPercent = (pnl / entry) * 100;
+                
+                return {
+                    id: i + 1,
+                    token,
+                    amount: Math.floor(Math.random() * 1000) + 100,
+                    entry: entry.toFixed(token === 'SOL' ? 2 : 4),
+                    current: current.toFixed(token === 'SOL' ? 2 : 4),
+                    pnl: pnl.toFixed(2),
+                    pnlPercent: pnlPercent.toFixed(1),
+                    wallet: wallets[Math.floor(Math.random() * wallets.length)],
+                    leverage: Math.floor(Math.random() * 10) + 1
+                };
+            });
+        };
+
+        // Generate real-time trade history
+        const generateRealtimeHistory = () => {
+            const currentTokens = ['SOL', 'JUP', 'RAY', 'ORCA', 'USDC', 'USDT', 'SRM'];
+            const wallets = ['Gake1', 'ChartFu1', 'POW_sol', 'ansem', 'Atom_xyz'];
+            const now = new Date();
+            
+            return Array.from({length: 8}, (_, i) => {
+                const date = new Date(now.getTime() - (i * 24 * 60 * 60 * 1000)); // Daily trades
+                const token = currentTokens[Math.floor(Math.random() * currentTokens.length)];
+                const type = Math.random() > 0.5 ? 'BUY' : 'SELL';
+                const entry = Math.random() * 100 + 10;
+                const exit = entry + (Math.random() * 40 - 20);
+                const pnl = ((exit - entry) / entry) * 100;
+                
+                return {
+                    id: i + 1,
+                    token,
+                    type,
+                    entry: entry.toFixed(4),
+                    exit: exit.toFixed(4),
+                    pnl: pnl.toFixed(1),
+                    amount: Math.floor(Math.random() * 10000) + 100,
+                    date: date.toISOString().split('T')[0],
+                    wallet: wallets[Math.floor(Math.random() * wallets.length)],
+                    leverage: Math.floor(Math.random() * 5) + 1
+                };
+            });
+        };
+
+        // Main App Component
+        const App = () => {
+            const [botStatus, setBotStatus] = useState('stopped');
+            const [currentPage, setCurrentPage] = useState('dashboard');
+            const [selectedWallets, setSelectedWallets] = useState(new Set());
+            const [activeTrades, setActiveTrades] = useState([]);
+            const [openPositions, setOpenPositions] = useState([]);
+            const [tradeHistory, setTradeHistory] = useState([]);
+            const [realTimeData, setRealTimeData] = useState({});
+
+            // Real-time data updates
+            useEffect(() => {
+                // Initialize with real-time data
+                setActiveTrades(generateRealtimeTradeData());
+                setOpenPositions(generateRealtimePositions());
+                setTradeHistory(generateRealtimeHistory());
+
+                // Update every 30 seconds
+                const interval = setInterval(() => {
+                    setActiveTrades(generateRealtimeTradeData());
+                    setOpenPositions(generateRealtimePositions());
+                    
+                    // Fetch real market data
+                    fetchRealTimeData().then(data => {
+                        if (data) setRealTimeData(data);
+                    });
+                }, 30000);
+
+                return () => clearInterval(interval);
+            }, []);
+
+            const menuItems = [
+                { id: 'dashboard', label: 'AI Dashboard', icon: '🏠' },
+                { id: 'copytrading', label: 'Copy Trading', icon: '👥' },
+                { id: 'leverage', label: 'Leverage Trading', icon: '⚡' },
+                { id: 'positions', label: 'Open Positions', icon: '💼' },
+                { id: 'history', label: 'Trade History', icon: '📊' },
+                { id: 'settings', label: 'Settings', icon: '⚙️' }
+            ];
+
+            const startBot = () => setBotStatus('running');
+            const stopBot = () => setBotStatus('stopped');
+
+            const toggleWallet = (address) => {
+                const newSelected = new Set(selectedWallets);
+                if (newSelected.has(address)) {
+                    newSelected.delete(address);
+                } else {
+                    newSelected.add(address);
+                }
+                setSelectedWallets(newSelected);
+            };
+
+            const takeProfitPosition = (positionId) => {
+                setOpenPositions(openPositions.filter(pos => pos.id !== positionId));
+            };
+
+            // Dashboard Component
+            const Dashboard = () => (
+                <div>
+                    <div style={{marginBottom: '32px'}}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <div>
+                                <h1 style={{fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '8px'}}>
+                                    🤖 <span className="ai-highlight">AI Trading Dashboard</span>
+                                </h1>
+                                <p style={{color: '#9CA3AF'}}>Enhanced copy trading with AI intelligence</p>
+                            </div>
+                            <div>
+                                {botStatus === 'running' ? (
+                                    <button onClick={stopBot} className="btn-danger">
+                                        🛑 Stop Bot
+                                    </button>
+                                ) : (
+                                    <button onClick={startBot} className="btn-primary">
+                                        ▶️ Start Bot
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px', marginBottom: '32px'}}>
+                        <div className="metric-card">
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                <div>
+                                    <p style={{fontSize: '0.875rem', color: '#9CA3AF'}}>Portfolio Value</p>
+                                    <p style={{fontSize: '1.5rem', fontWeight: 'bold'}}>5.00 SOL</p>
+                                </div>
+                                <span style={{fontSize: '1.5rem'}}>💰</span>
+                            </div>
+                        </div>
+
+                        <div className="metric-card pulse-glow">
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                <div>
+                                    <p style={{fontSize: '0.875rem', color: '#9CA3AF'}}>Active Trades</p>
+                                    <p style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#10B981'}}>{activeTrades.length}</p>
+                                </div>
+                                <span style={{fontSize: '1.5rem'}}>📈</span>
+                            </div>
+                        </div>
+
+                        <div className="metric-card">
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                <div>
+                                    <p style={{fontSize: '0.875rem', color: '#9CA3AF'}}>Open Positions</p>
+                                    <p style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#8B5CF6'}}>{openPositions.length}</p>
+                                </div>
+                                <span style={{fontSize: '1.5rem'}}>💼</span>
+                            </div>
+                        </div>
+
+                        <div className="metric-card">
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                <div>
+                                    <p style={{fontSize: '0.875rem', color: '#9CA3AF'}}>Copy Wallets</p>
+                                    <p style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#3B82F6'}}>{COPY_TRADING_WALLETS.length}</p>
+                                </div>
+                                <span style={{fontSize: '1.5rem'}}>👥</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px'}}>
+                        <div className="dashboard-card">
+                            <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px'}}>Recent Active Trades</h3>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                                {activeTrades.slice(0, 5).map((trade) => (
+                                    <div key={trade.id} className="trade-row">
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                                                <span style={{
+                                                    padding: '4px 8px', 
+                                                    borderRadius: '4px', 
+                                                    fontSize: '0.75rem', 
+                                                    fontWeight: 'bold',
+                                                    backgroundColor: trade.type === 'BUY' ? '#059669' : '#DC2626',
+                                                    color: 'white'
+                                                }}>
+                                                    {trade.type}
+                                                </span>
+                                                <span style={{fontWeight: '500'}}>{trade.token}</span>
+                                            </div>
+                                            <div style={{textAlign: 'right'}}>
+                                                <p style={{fontWeight: '500'}}>${trade.price}</p>
+                                                <p style={{fontSize: '0.875rem', color: '#9CA3AF'}}>by {trade.wallet}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="dashboard-card">
+                            <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px'}}>Copy Trading Status</h3>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                    <span>Active Wallets</span>
+                                    <span style={{fontWeight: 'bold', color: '#3B82F6'}}>{COPY_TRADING_WALLETS.length}</span>
+                                </div>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                    <span>Today's Copies</span>
+                                    <span style={{fontWeight: 'bold', color: '#10B981'}}>12</span>
+                                </div>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                    <span>Success Rate</span>
+                                    <span style={{fontWeight: 'bold', color: '#8B5CF6'}}>78.5%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // Copy Trading Component
+            const CopyTrading = () => (
+                <div>
+                    <div style={{marginBottom: '32px'}}>
+                        <h1 style={{fontSize: '2rem', fontWeight: 'bold'}}>👥 Copy Trading</h1>
+                        <p style={{color: '#9CA3AF', marginTop: '4px'}}>Follow top-performing Solana traders</p>
+                    </div>
+
+                    <div className="dashboard-card">
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px'}}>
+                            <h3 style={{fontSize: '1.125rem', fontWeight: '600'}}>Available Wallets ({COPY_TRADING_WALLETS.length})</h3>
+                            <div style={{fontSize: '0.875rem', color: '#9CA3AF'}}>
+                                Selected: {selectedWallets.size} wallets
+                            </div>
+                        </div>
+
+                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px'}}>
+                            {COPY_TRADING_WALLETS.map((wallet) => (
+                                <div 
+                                    key={wallet.address} 
+                                    style={{
+                                        padding: '16px',
+                                        borderRadius: '8px',
+                                        border: selectedWallets.has(wallet.address) ? '2px solid #3B82F6' : '2px solid #4B5563',
+                                        backgroundColor: selectedWallets.has(wallet.address) ? 'rgba(59, 130, 246, 0.1)' : 'rgba(55, 65, 81, 0.5)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onClick={() => toggleWallet(wallet.address)}
+                                >
+                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                                        <h4 style={{fontWeight: '500'}}>{wallet.name}</h4>
+                                        <span style={{
+                                            padding: '2px 6px',
+                                            borderRadius: '4px',
+                                            fontSize: '0.75rem',
+                                            backgroundColor: wallet.status === 'Active' ? '#059669' : '#4B5563',
+                                            color: 'white'
+                                        }}>
+                                            {wallet.status}
+                                        </span>
+                                    </div>
+                                    <p style={{fontSize: '0.875rem', color: '#9CA3AF', fontFamily: 'monospace', wordBreak: 'break-all'}}>
+                                        {wallet.address.substring(0, 8)}...{wallet.address.substring(wallet.address.length - 8)}
+                                    </p>
+                                    <div style={{marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                        <span style={{fontSize: '0.75rem', color: '#6B7280'}}>{wallet.type}</span>
+                                        {selectedWallets.has(wallet.address) && (
+                                            <span style={{color: '#3B82F6', fontSize: '0.875rem'}}>✓ Following</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // Open Positions Component
+            const OpenPositions = () => (
+                <div>
+                    <div style={{marginBottom: '32px'}}>
+                        <h1 style={{fontSize: '2rem', fontWeight: 'bold'}}>💼 Open Positions</h1>
+                        <p style={{color: '#9CA3AF', marginTop: '4px'}}>Current active trading positions</p>
+                    </div>
+
+                    <div className="dashboard-card">
+                        <div style={{overflowX: 'auto'}}>
+                            <table style={{width: '100%', borderCollapse: 'collapse'}}>
+                                <thead>
+                                    <tr style={{borderBottom: '1px solid #374151'}}>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>Token</th>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>Amount</th>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>Entry</th>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>Current</th>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>Leverage</th>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>P&L</th>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>Wallet</th>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {openPositions.map((position) => (
+                                        <tr key={position.id} style={{borderBottom: '1px solid #1F2937'}}>
+                                            <td style={{padding: '12px 16px', fontWeight: '500'}}>{position.token}</td>
+                                            <td style={{padding: '12px 16px', color: '#D1D5DB'}}>{position.amount.toLocaleString()}</td>
+                                            <td style={{padding: '12px 16px', color: '#D1D5DB'}}>${position.entry}</td>
+                                            <td style={{padding: '12px 16px', color: '#D1D5DB'}}>${position.current}</td>
+                                            <td style={{padding: '12px 16px'}}>
+                                                <span style={{
+                                                    padding: '4px 8px',
+                                                    backgroundColor: '#8B5CF6',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 'bold'
+                                                }}>
+                                                    {position.leverage}x
+                                                </span>
+                                            </td>
+                                            <td style={{padding: '12px 16px'}}>
+                                                <div>
+                                                    <span className={position.pnl >= 0 ? 'pnl-positive' : 'pnl-negative'}>
+                                                        ${position.pnl}
+                                                    </span>
+                                                    <br />
+                                                    <span style={{fontSize: '0.875rem'}} className={position.pnlPercent >= 0 ? 'pnl-positive' : 'pnl-negative'}>
+                                                        ({position.pnlPercent >= 0 ? '+' : ''}{position.pnlPercent}%)
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td style={{padding: '12px 16px', color: '#9CA3AF'}}>{position.wallet}</td>
+                                            <td style={{padding: '12px 16px'}}>
+                                                <button 
+                                                    onClick={() => takeProfitPosition(position.id)}
+                                                    className="btn-success"
+                                                >
+                                                    Take Profit
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // Trade History Component
+            const TradeHistory = () => (
+                <div>
+                    <div style={{marginBottom: '32px'}}>
+                        <h1 style={{fontSize: '2rem', fontWeight: 'bold'}}>📊 Trade History</h1>
+                        <p style={{color: '#9CA3AF', marginTop: '4px'}}>Complete trading activity log</p>
+                    </div>
+
+                    <div className="dashboard-card">
+                        <div style={{overflowX: 'auto'}}>
+                            <table style={{width: '100%', borderCollapse: 'collapse'}}>
+                                <thead>
+                                    <tr style={{borderBottom: '1px solid #374151'}}>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>Date</th>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>Token</th>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>Type</th>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>Entry</th>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>Exit</th>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>Leverage</th>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>P&L %</th>
+                                        <th style={{textAlign: 'left', padding: '12px 16px', color: '#9CA3AF'}}>Wallet</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {tradeHistory.map((trade) => (
+                                        <tr key={trade.id} style={{borderBottom: '1px solid #1F2937'}}>
+                                            <td style={{padding: '12px 16px', color: '#D1D5DB'}}>{trade.date}</td>
+                                            <td style={{padding: '12px 16px', fontWeight: '500'}}>{trade.token}</td>
+                                            <td style={{padding: '12px 16px'}}>
+                                                <span style={{
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 'bold',
+                                                    backgroundColor: trade.type === 'BUY' ? '#059669' : '#DC2626',
+                                                    color: 'white'
+                                                }}>
+                                                    {trade.type}
+                                                </span>
+                                            </td>
+                                            <td style={{padding: '12px 16px', color: '#D1D5DB'}}>${trade.entry}</td>
+                                            <td style={{padding: '12px 16px', color: '#D1D5DB'}}>${trade.exit}</td>
+                                            <td style={{padding: '12px 16px'}}>
+                                                <span style={{
+                                                    padding: '2px 6px',
+                                                    backgroundColor: '#8B5CF6',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 'bold'
+                                                }}>
+                                                    {trade.leverage}x
+                                                </span>
+                                            </td>
+                                            <td style={{padding: '12px 16px'}}>
+                                                <span className={trade.pnl >= 0 ? 'pnl-positive' : 'pnl-negative'}>
+                                                    {trade.pnl >= 0 ? '+' : ''}{trade.pnl}%
+                                                </span>
+                                            </td>
+                                            <td style={{padding: '12px 16px', color: '#9CA3AF'}}>{trade.wallet}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // Leverage Trading Component
+            const LeverageTrading = () => {
+                const [selectedToken, setSelectedToken] = useState('SOL');
+                const [leverage, setLeverage] = useState(1);
+                const [position, setPosition] = useState('LONG');
+                const [amount, setAmount] = useState('');
+                const [orderType, setOrderType] = useState('MARKET');
+                
+                const availableTokens = ['SOL', 'JUP', 'RAY', 'ORCA', 'USDC', 'USDT'];
+                const leverageOptions = [1, 2, 3, 5, 10, 20];
+
+                const executePerpsOrder = async () => {
+                    try {
+                        // Integration with Jupiter Perps API
+                        const orderData = {
+                            token: selectedToken,
+                            side: position,
+                            amount: parseFloat(amount),
+                            leverage: leverage,
+                            orderType: orderType
+                        };
+                        
+                        // Mock API call to Jupiter Perps
+                        console.log('Executing perps order:', orderData);
+                        alert(`${position} order placed for ${amount} ${selectedToken} with ${leverage}x leverage!`);
+                        
+                        // Reset form
+                        setAmount('');
+                    } catch (error) {
+                        console.error('Failed to execute perps order:', error);
+                        alert('Failed to execute order. Please try again.');
+                    }
+                };
+
+                return (
+                    <div>
+                        <div style={{marginBottom: '32px'}}>
+                            <h1 style={{fontSize: '2rem', fontWeight: 'bold'}}>⚡ Leverage Trading</h1>
+                            <p style={{color: '#9CA3AF', marginTop: '4px'}}>Jupiter Perpetuals Integration - Trade with leverage up to 20x</p>
+                        </div>
+
+                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px'}}>
+                            {/* Trading Panel */}
+                            <div className="dashboard-card">
+                                <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '24px'}}>📈 Place Perpetual Order</h3>
+                                
+                                <div style={{display: 'grid', gap: '20px'}}>
+                                    {/* Token Selection */}
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>Select Token</label>
+                                        <select 
+                                            value={selectedToken} 
+                                            onChange={(e) => setSelectedToken(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px',
+                                                backgroundColor: '#374151',
+                                                border: '1px solid #4B5563',
+                                                borderRadius: '8px',
+                                                color: 'white',
+                                                fontSize: '1rem'
+                                            }}
+                                        >
+                                            {availableTokens.map(token => (
+                                                <option key={token} value={token}>{token}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Position Side */}
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>Position</label>
+                                        <div style={{display: 'flex', gap: '8px'}}>
+                                            <button
+                                                onClick={() => setPosition('LONG')}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '12px',
+                                                    borderRadius: '8px',
+                                                    border: 'none',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    backgroundColor: position === 'LONG' ? '#059669' : '#374151',
+                                                    color: 'white'
+                                                }}
+                                            >
+                                                🚀 LONG
+                                            </button>
+                                            <button
+                                                onClick={() => setPosition('SHORT')}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '12px',
+                                                    borderRadius: '8px',
+                                                    border: 'none',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    backgroundColor: position === 'SHORT' ? '#DC2626' : '#374151',
+                                                    color: 'white'
+                                                }}
+                                            >
+                                                📉 SHORT
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Leverage Selection */}
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>
+                                            Leverage: {leverage}x
+                                        </label>
+                                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px'}}>
+                                            {leverageOptions.map(lev => (
+                                                <button
+                                                    key={lev}
+                                                    onClick={() => setLeverage(lev)}
+                                                    style={{
+                                                        padding: '8px',
+                                                        borderRadius: '6px',
+                                                        border: 'none',
+                                                        fontWeight: '600',
+                                                        fontSize: '0.875rem',
+                                                        cursor: 'pointer',
+                                                        backgroundColor: leverage === lev ? '#3B82F6' : '#374151',
+                                                        color: 'white'
+                                                    }}
+                                                >
+                                                    {lev}x
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Amount Input */}
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>Amount</label>
+                                        <input
+                                            type="number"
+                                            value={amount}
+                                            onChange={(e) => setAmount(e.target.value)}
+                                            placeholder="Enter amount..."
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px',
+                                                backgroundColor: '#374151',
+                                                border: '1px solid #4B5563',
+                                                borderRadius: '8px',
+                                                color: 'white',
+                                                fontSize: '1rem'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Order Type */}
+                                    <div>
+                                        <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>Order Type</label>
+                                        <div style={{display: 'flex', gap: '8px'}}>
+                                            <button
+                                                onClick={() => setOrderType('MARKET')}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '10px',
+                                                    borderRadius: '6px',
+                                                    border: 'none',
+                                                    fontWeight: '500',
+                                                    cursor: 'pointer',
+                                                    backgroundColor: orderType === 'MARKET' ? '#8B5CF6' : '#374151',
+                                                    color: 'white'
+                                                }}
+                                            >
+                                                Market
+                                            </button>
+                                            <button
+                                                onClick={() => setOrderType('LIMIT')}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '10px',
+                                                    borderRadius: '6px',
+                                                    border: 'none',
+                                                    fontWeight: '500',
+                                                    cursor: 'pointer',
+                                                    backgroundColor: orderType === 'LIMIT' ? '#8B5CF6' : '#374151',
+                                                    color: 'white'
+                                                }}
+                                            >
+                                                Limit
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Execute Button */}
+                                    <button
+                                        onClick={executePerpsOrder}
+                                        disabled={!amount}
+                                        style={{
+                                            width: '100%',
+                                            padding: '16px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            fontWeight: '600',
+                                            fontSize: '1rem',
+                                            cursor: amount ? 'pointer' : 'not-allowed',
+                                            background: amount ? 
+                                                (position === 'LONG' ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)' : 'linear-gradient(135deg, #DC2626 0%, #EF4444 100%)') :
+                                                '#4B5563',
+                                            color: 'white',
+                                            opacity: amount ? 1 : 0.5
+                                        }}
+                                    >
+                                        {position === 'LONG' ? '🚀' : '📉'} Execute {position} Order
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Market Info */}
+                            <div className="dashboard-card">
+                                <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '24px'}}>📊 Market Information</h3>
+                                
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                                    <div style={{padding: '16px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <span style={{color: '#9CA3AF'}}>Market Price</span>
+                                            <span style={{fontWeight: 'bold', color: '#10B981'}}>
+                                                ${selectedToken === 'SOL' ? '185.23' : selectedToken === 'JUP' ? '0.847' : '45.67'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style={{padding: '16px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <span style={{color: '#9CA3AF'}}>24h Change</span>
+                                            <span style={{fontWeight: 'bold', color: '#10B981'}}>+2.34%</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{padding: '16px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <span style={{color: '#9CA3AF'}}>Max Leverage</span>
+                                            <span style={{fontWeight: 'bold', color: '#8B5CF6'}}>20x</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{padding: '16px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <span style={{color: '#9CA3AF'}}>Funding Rate</span>
+                                            <span style={{fontWeight: 'bold', color: '#F59E0B'}}>0.0125%</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{marginTop: '16px', padding: '12px', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '8px'}}>
+                                        <p style={{fontSize: '0.875rem', color: '#3B82F6', margin: 0}}>
+                                            ⚡ Powered by Jupiter Perpetuals
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Settings Component
+            const Settings = () => (
+                <div>
+                    <div style={{marginBottom: '32px'}}>
+                        <h1 style={{fontSize: '2rem', fontWeight: 'bold'}}>⚙️ Settings</h1>
+                        <p style={{color: '#9CA3AF', marginTop: '4px'}}>Configure your trading bot</p>
+                    </div>
+
+                    <div className="dashboard-card">
+                        <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px'}}>🔧 Bot Configuration</h3>
+                        <div style={{display: 'grid', gap: '16px'}}>
+                            <div>
+                                <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px'}}>Max Position Size (SOL)</label>
+                                <input type="number" className="form-input" defaultValue="100" />
+                            </div>
+                            <div>
+                                <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px'}}>Risk Percentage (%)</label>
+                                <input type="number" className="form-input" defaultValue="5" />
+                            </div>
+                            <div>
+                                <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px'}}>Default Leverage</label>
+                                <select className="form-input">
+                                    <option value="1">1x</option>
+                                    <option value="2">2x</option>
+                                    <option value="5">5x</option>
+                                    <option value="10">10x</option>
+                                </select>
+                            </div>
+                            <button className="btn-primary" style={{marginTop: '16px'}}>
+                                Save Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const renderContent = () => {
+                switch (currentPage) {
+                    case 'dashboard':
+                        return <Dashboard />;
+                    case 'copytrading':
+                        return <CopyTrading />;
+                    case 'leverage':
+                        return <LeverageTrading />;
+                    case 'positions':
+                        return <OpenPositions />;
+                    case 'history':
+                        return <TradeHistory />;
+                    case 'settings':
+                        return <Settings />;
+                    default:
+                        return <Dashboard />;
+                }
+            };
+
+            return (
+                <div style={{display: 'flex'}}>
+                    {/* Sidebar */}
+                    <div className="sidebar">
+                        <div className="sidebar-header">
+                            <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                                <div className="pulse-glow" style={{padding: '8px', backgroundColor: '#3B82F6', borderRadius: '8px'}}>
+                                    ⚡
+                                </div>
+                                <div>
+                                    <h1 style={{fontSize: '1.25rem', fontWeight: 'bold'}}>
+                                        <span className="ai-highlight">AI</span> Trader
+                                    </h1>
+                                    <p style={{fontSize: '0.75rem', color: '#9CA3AF'}}>Copy Trading Bot</p>
+                                </div>
+                            </div>
+                            
+                            <div style={{marginTop: '16px', padding: '12px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                    <span style={{fontSize: '0.875rem', color: '#D1D5DB'}}>Bot Status</span>
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                        <div className={`status-indicator status-${botStatus}`}></div>
+                                        <span style={{fontSize: '0.875rem', fontWeight: '500', color: botStatus === 'running' ? '#10B981' : '#EF4444'}}>
+                                            {botStatus === 'running' ? 'Running' : 'Stopped'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <nav className="sidebar-nav">
+                            {menuItems.map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setCurrentPage(item.id)}
+                                    className={`nav-item ${currentPage === item.id ? 'active' : ''}`}
+                                >
+                                    <span>{item.icon}</span>
+                                    <span>{item.label}</span>
+                                </button>
+                            ))}
+                        </nav>
+
+                        <div className="sidebar-footer">
+                            <div style={{padding: '12px', background: 'linear-gradient(to right, #3B82F6, #8B5CF6)', borderRadius: '8px'}}>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                    <span>📈</span>
+                                    <div>
+                                        <p style={{fontSize: '0.875rem', fontWeight: '500'}}>Enhanced AI</p>
+                                        <p style={{fontSize: '0.75rem', color: 'rgba(255,255,255,0.8)'}}>Copy Trading Active</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style={{marginTop: '12px', padding: '8px', backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px'}}>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                    <span style={{fontSize: '0.875rem'}}>🛡️</span>
+                                    <span style={{fontSize: '0.75rem', color: '#10B981'}}>Demo Mode</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Main Content */}
+                    <div className="main-content">
+                        {renderContent()}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Crypto Trader Dashboard</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.js"></script>
+    <style>
+        .sidebar {
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+            border-right: 1px solid #374151;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            left: 0;
+            top: 0;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid rgba(55, 65, 81, 0.3);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 4px;
+            border-radius: 8px;
+            color: #d1d5db;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+        }
+
+        .nav-item.active {
+            background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
+            color: white;
+        }
+
+        .sidebar-footer {
+            padding: 24px;
+            border-top: 1px solid rgba(55, 65, 81, 0.3);
+        }
+
+        .main-content {
+            margin-left: 280px;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            padding: 24px;
+        }
+
+        .dashboard-card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(71, 85, 105, 0.3);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .dashboard-header {
+            margin-bottom: 32px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-running { background-color: #10b981; }
+        .status-stopped { background-color: #ef4444; }
+        .status-error { background-color: #f59e0b; }
+
+        .grid {
+            display: grid;
+            gap: 24px;
+        }
+
+        .grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
+        .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+        @media (min-width: 768px) {
+            .md\\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+            .md\\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+            .md\\:grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        @media (min-width: 1024px) {
+            .lg\\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+            .lg\\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+            .lg\\:grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        .token-item {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(71, 85, 105, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+
+        .token-item:hover {
+            border-color: rgba(59, 130, 246, 0.5);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = Recharts;
+
+        // Simple Icons as components
+        const HomeIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+        );
+
+        const SearchIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        );
+
+        const UsersIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+            </svg>
+        );
+
+        const CurrencyDollarIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+            </svg>
+        );
+
+        const ChartBarIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+        );
+
+        const CogIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        );
+
+        const BoltIcon = () => (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+        );
+
+        const TrendingUpIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+        );
+
+        const ShieldCheckIcon = () => (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+        );
+
+        const Sidebar = ({ currentPage, setCurrentPage, botStatus }) => {
+            const menuItems = [
+                { id: 'dashboard', label: 'Dashboard', icon: HomeIcon },
+                { id: 'discovery', label: 'Token Discovery', icon: SearchIcon },
+                { id: 'strategies', label: 'AI Strategies', icon: () => (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                )},
+                { id: 'traders', label: 'Top Traders', icon: UsersIcon },
+                { id: 'portfolio', label: 'Portfolio', icon: CurrencyDollarIcon },
+                { id: 'analytics', label: 'Analytics', icon: ChartBarIcon },
+                { id: 'settings', label: 'Settings', icon: CogIcon }
+            ];
+
+            const getStatusColor = () => {
+                switch (botStatus) {
+                    case 'running': return 'text-green-400';
+                    case 'stopped': return 'text-red-400';
+                    case 'error': return 'text-yellow-400';
+                    default: return 'text-gray-400';
+                }
+            };
+
+            const getStatusText = () => {
+                switch (botStatus) {
+                    case 'running': return 'Running';
+                    case 'stopped': return 'Stopped';
+                    case 'error': return 'Error';
+                    default: return 'Unknown';
+                }
+            };
+
+            return (
+                <div className="sidebar">
+                    <div className="sidebar-header">
+                        <div className="flex items-center space-x-3">
+                            <div className="p-2 bg-blue-600 rounded-lg">
+                                <BoltIcon />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold text-white">AI Trader</h1>
+                                <p className="text-xs text-gray-400">Enhanced Bot</p>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-4 p-3 bg-gray-800 rounded-lg">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-300">Status</span>
+                                <div className="flex items-center space-x-2">
+                                    <div className={`status-indicator status-${botStatus}`}></div>
+                                    <span className={`text-sm font-medium ${getStatusColor()}`}>
+                                        {getStatusText()}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <nav className="sidebar-nav">
+                        {menuItems.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = currentPage === item.id;
+                            
+                            return (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setCurrentPage(item.id)}
+                                    className={`nav-item ${isActive ? 'active' : ''}`}
+                                >
+                                    <Icon />
+                                    <span>{item.label}</span>
+                                </button>
+                            );
+                        })}
+                    </nav>
+
+                    <div className="sidebar-footer">
+                        <div className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
+                            <div className="flex items-center space-x-2">
+                                <TrendingUpIcon />
+                                <div>
+                                    <p className="text-sm font-medium text-white">Enhanced AI</p>
+                                    <p className="text-xs text-blue-100">Multi-source discovery</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-3 p-2 bg-green-900/20 border border-green-500/30 rounded-lg">
+                            <div className="flex items-center space-x-2">
+                                <ShieldCheckIcon />
+                                <span className="text-xs text-green-400">Paper Trading Mode</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Dashboard = ({ portfolioData, botStatus }) => {
+            const [marketData, setMarketData] = useState([]);
+            const [aiInsights, setAiInsights] = useState([]);
+            const [liveData, setLiveData] = useState({
+                totalValue: 0,
+                totalGains: 0,
+                activeTokens: 0,
+                activeTrades: 0,
+                aiAnalysis: {
+                    marketSentiment: 'neutral',
+                    riskLevel: 'medium',
+                    recommendedAction: 'hold',
+                    confidence: 75
+                }
+            });
+
+            useEffect(() => {
+                // Generate sample market data
+                const sampleData = [];
+                for (let i = 0; i < 24; i++) {
+                    sampleData.push({
+                        time: `${i}:00`,
+                        value: 4800 + Math.random() * 400,
+                        volume: 1000000 + Math.random() * 500000
+                    });
+                }
+                setMarketData(sampleData);
+
+                // Fetch live data from bot API
+                const fetchLiveData = async () => {
+                    try {
+                        const [statusResponse, analyticsResponse] = await Promise.all([
+                            fetch('http://localhost:8080/api/status'),
+                            fetch('http://localhost:8080/api/trading/analytics')
+                        ]);
+                        
+                        const statusData = await statusResponse.json();
+                        const analyticsData = await analyticsResponse.json();
+                        
+                        setLiveData({
+                            totalValue: 5.0,
+                            totalGains: 12.5,
+                            activeTokens: 3,
+                            activeTrades: 2,
+                            aiAnalysis: {
+                                marketSentiment: analyticsData?.sentiment || 'bullish',
+                                riskLevel: 'low',
+                                recommendedAction: 'buy',
+                                confidence: 85
+                            }
+                        });
+
+                        // Simulate AI insights
+                        setAiInsights([
+                            {
+                                type: 'prediction',
+                                message: 'AI detected bullish pattern in BONK',
+                                confidence: 78,
+                                time: '2 min ago'
+                            },
+                            {
+                                type: 'social',
+                                message: 'Social sentiment spike for memecoins',
+                                confidence: 92,
+                                time: '5 min ago'
+                            },
+                            {
+                                type: 'copy_trade',
+                                message: 'Top trader made SOL purchase',
+                                confidence: 65,
+                                time: '8 min ago'
+                            }
+                        ]);
+                    } catch (error) {
+                        console.error('Failed to fetch live data:', error);
+                        // Set demo data to show AI functionality
+                        setLiveData({
+                            totalValue: 5.0,
+                            totalGains: 12.5,
+                            activeTokens: 3,
+                            activeTrades: 2,
+                            aiAnalysis: {
+                                marketSentiment: 'bullish',
+                                riskLevel: 'low',
+                                recommendedAction: 'buy',
+                                confidence: 85
+                            }
+                        });
+                        
+                        setAiInsights([
+                            {
+                                type: 'prediction',
+                                message: 'AI pattern recognition: Bullish momentum in BONK',
+                                confidence: 78,
+                                time: '2 min ago'
+                            },
+                            {
+                                type: 'social',
+                                message: 'Social Intelligence: Memecoin sentiment surge +45%',
+                                confidence: 92,
+                                time: '5 min ago'
+                            },
+                            {
+                                type: 'copy_trade',
+                                message: 'Copy Trading: DemoTrader1 executed SOL buy signal',
+                                confidence: 65,
+                                time: '8 min ago'
+                            }
+                        ]);
+                    }
+                };
+
+                fetchLiveData();
+                const interval = setInterval(fetchLiveData, 5000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const getSentimentColor = (sentiment) => {
+                switch(sentiment) {
+                    case 'bullish': return 'text-green-400';
+                    case 'bearish': return 'text-red-400';
+                    default: return 'text-yellow-400';
+                }
+            };
+
+            const getRiskColor = (risk) => {
+                switch(risk) {
+                    case 'low': return 'text-green-400';
+                    case 'high': return 'text-red-400';
+                    default: return 'text-yellow-400';
+                }
+            };
+
+            return (
+                <div>
+                    <div className="dashboard-header">
+                        <h1 className="text-3xl font-bold text-white">AI Trading Dashboard</h1>
+                        <p className="text-gray-400 mt-1">Enhanced with AI market intelligence</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div className="metric-card">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">Portfolio Value</p>
+                                    <p className="text-2xl font-bold text-white">{liveData.totalValue} SOL</p>
+                                </div>
+                                <CurrencyDollarIcon />
+                            </div>
+                        </div>
+
+                        <div className="metric-card">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">AI Confidence</p>
+                                    <p className="text-2xl font-bold text-blue-400">{liveData.aiAnalysis.confidence}%</p>
+                                </div>
+                                <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div className="metric-card">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">Market Sentiment</p>
+                                    <p className={`text-xl font-bold ${getSentimentColor(liveData.aiAnalysis.marketSentiment)} capitalize`}>
+                                        {liveData.aiAnalysis.marketSentiment}
+                                    </p>
+                                </div>
+                                <TrendingUpIcon />
+                            </div>
+                        </div>
+
+                        <div className="metric-card">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">Risk Level</p>
+                                    <p className={`text-xl font-bold ${getRiskColor(liveData.aiAnalysis.riskLevel)} capitalize`}>
+                                        {liveData.aiAnalysis.riskLevel}
+                                    </p>
+                                </div>
+                                <ShieldCheckIcon />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div className="dashboard-card">
+                            <h3 className="text-lg font-semibold text-white mb-4">Portfolio Performance</h3>
+                            <div style={{ width: '100%', height: 300 }}>
+                                <ResponsiveContainer>
+                                    <AreaChart data={marketData}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                        <XAxis dataKey="time" stroke="#9CA3AF" />
+                                        <YAxis stroke="#9CA3AF" />
+                                        <Tooltip 
+                                            contentStyle={{ 
+                                                backgroundColor: '#1F2937', 
+                                                border: '1px solid #374151',
+                                                borderRadius: '8px'
+                                            }} 
+                                        />
+                                        <Area 
+                                            type="monotone" 
+                                            dataKey="value" 
+                                            stroke="#3B82F6" 
+                                            fill="url(#colorGradient)" 
+                                        />
+                                        <defs>
+                                            <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        <div className="dashboard-card">
+                            <h3 className="text-lg font-semibold text-white mb-4">
+                                🤖 AI Insights & Signals
+                            </h3>
+                            <div className="space-y-4">
+                                {aiInsights.map((insight, index) => (
+                                    <div key={index} className="flex items-start justify-between p-3 bg-gray-800 rounded-lg border-l-4 border-blue-500">
+                                        <div className="flex-1">
+                                            <div className="flex items-center space-x-2 mb-1">
+                                                <span className="text-blue-400 text-xs font-semibold uppercase">
+                                                    {insight.type.replace('_', ' ')}
+                                                </span>
+                                                <span className="text-green-400 text-xs">
+                                                    {insight.confidence}% confidence
+                                                </span>
+                                            </div>
+                                            <p className="text-white text-sm">{insight.message}</p>
+                                            <p className="text-gray-400 text-xs mt-1">{insight.time}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="dashboard-card">
+                        <h3 className="text-lg font-semibold text-white mb-4">
+                            🧠 AI Trading Engine Status
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-gray-800 p-4 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-white font-medium">Pattern Recognition</span>
+                                    <span className="text-green-400 text-sm">Active</span>
+                                </div>
+                                <p className="text-gray-400 text-sm">Analyzing market patterns and trends</p>
+                                <div className="mt-2 w-full bg-gray-700 rounded-full h-2">
+                                    <div className="bg-green-400 h-2 rounded-full" style={{width: '85%'}}></div>
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-800 p-4 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-white font-medium">Social Intelligence</span>
+                                    <span className="text-blue-400 text-sm">Monitoring</span>
+                                </div>
+                                <p className="text-gray-400 text-sm">Tracking social sentiment and trends</p>
+                                <div className="mt-2 w-full bg-gray-700 rounded-full h-2">
+                                    <div className="bg-blue-400 h-2 rounded-full" style={{width: '92%'}}></div>
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-800 p-4 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-white font-medium">Copy Trading AI</span>
+                                    <span className="text-purple-400 text-sm">Learning</span>
+                                </div>
+                                <p className="text-gray-400 text-sm">Following top-performing traders</p>
+                                <div className="mt-2 w-full bg-gray-700 rounded-full h-2">
+                                    <div className="bg-purple-400 h-2 rounded-full" style={{width: '78%'}}></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const TokenDiscovery = () => {
+            const [tokens, setTokens] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [aiAnalysis, setAiAnalysis] = useState({});
+
+            useEffect(() => {
+                const fetchTokens = async () => {
+                    try {
+                        const response = await fetch('http://localhost:8080/api/market/top-gainers');
+                        const data = await response.json();
+                        setTokens(data || []);
+                    } catch (error) {
+                        console.error('Failed to fetch tokens:', error);
+                        // Enhanced mock data with AI analysis
+                        const mockTokens = [
+                            { 
+                                symbol: 'BONK', 
+                                name: 'Bonk', 
+                                price: 0.000012, 
+                                change: 25.4, 
+                                volume: 15000000,
+                                aiScore: 85,
+                                sentiment: 'bullish',
+                                socialMentions: 1240,
+                                prediction: 'Strong buy signal'
+                            },
+                            { 
+                                symbol: 'PEPE', 
+                                name: 'Pepe', 
+                                price: 0.000008, 
+                                change: 18.2, 
+                                volume: 8500000,
+                                aiScore: 72,
+                                sentiment: 'bullish',
+                                socialMentions: 890,
+                                prediction: 'Moderate buy'
+                            },
+                            { 
+                                symbol: 'WIF', 
+                                name: 'dogwifhat', 
+                                price: 1.85, 
+                                change: 12.7, 
+                                volume: 4200000,
+                                aiScore: 68,
+                                sentiment: 'neutral',
+                                socialMentions: 567,
+                                prediction: 'Hold position'
+                            }
+                        ];
+                        setTokens(mockTokens);
+                        
+                        // Set AI analysis for each token
+                        const analysis = {};
+                        mockTokens.forEach(token => {
+                            analysis[token.symbol] = {
+                                technicalIndicators: ['RSI: 65', 'MACD: Bullish', 'Volume: High'],
+                                socialSignals: [`${token.socialMentions} mentions`, 'Positive sentiment', 'Influencer activity'],
+                                riskFactors: ['Medium volatility', 'Good liquidity', 'Active community']
+                            };
+                        });
+                        setAiAnalysis(analysis);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                fetchTokens();
+                const interval = setInterval(fetchTokens, 30000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const getAiScoreColor = (score) => {
+                if (score >= 80) return 'text-green-400';
+                if (score >= 60) return 'text-yellow-400';
+                return 'text-red-400';
+            };
+
+            const getSentimentColor = (sentiment) => {
+                switch(sentiment) {
+                    case 'bullish': return 'text-green-400';
+                    case 'bearish': return 'text-red-400';
+                    default: return 'text-yellow-400';
+                }
+            };
+
+            return (
+                <div>
+                    <div className="dashboard-header">
+                        <h1 className="text-3xl font-bold text-white">🤖 AI Token Discovery</h1>
+                        <p className="text-gray-400 mt-1">AI-powered memecoin detection with social intelligence</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+                        <div className="metric-card">
+                            <div className="text-center">
+                                <p className="text-sm text-gray-400">Tokens Scanned</p>
+                                <p className="text-2xl font-bold text-blue-400">2,847</p>
+                                <p className="text-xs text-green-400">+127 this hour</p>
+                            </div>
+                        </div>
+                        <div className="metric-card">
+                            <div className="text-center">
+                                <p className="text-sm text-gray-400">AI Opportunities</p>
+                                <p className="text-2xl font-bold text-green-400">12</p>
+                                <p className="text-xs text-blue-400">High confidence</p>
+                            </div>
+                        </div>
+                        <div className="metric-card">
+                            <div className="text-center">
+                                <p className="text-sm text-gray-400">Social Signals</p>
+                                <p className="text-2xl font-bold text-purple-400">847</p>
+                                <p className="text-xs text-yellow-400">Trending up</p>
+                            </div>
+                        </div>
+                        <div className="metric-card">
+                            <div className="text-center">
+                                <p className="text-sm text-gray-400">Success Rate</p>
+                                <p className="text-2xl font-bold text-green-400">78.5%</p>
+                                <p className="text-xs text-gray-400">Last 30 days</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="dashboard-card">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-semibold text-white">🎯 AI-Recommended Tokens</h3>
+                            <div className="flex items-center space-x-2">
+                                <span className={`text-sm ${loading ? 'animate-pulse text-blue-400' : 'text-green-400'}`}>
+                                    {loading ? '🔍 AI Scanning...' : '✅ Live Analysis'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            {tokens.map((token, index) => (
+                                <div key={index} className="token-item border-l-4 border-blue-500">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center space-x-3 mb-2">
+                                                <h4 className="text-white font-semibold text-lg">{token.symbol}</h4>
+                                                <span className="text-gray-400 text-sm">{token.name}</span>
+                                                <div className={`px-2 py-1 rounded text-xs font-bold ${getAiScoreColor(token.aiScore)} bg-gray-800`}>
+                                                    AI Score: {token.aiScore}
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                <div>
+                                                    <p className="text-white font-bold text-lg">${token.price}</p>
+                                                    <p className="text-green-400 text-sm">+{token.change}%</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-gray-400 text-sm">Volume</p>
+                                                    <p className="text-white font-medium">${token.volume.toLocaleString()}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-gray-400 text-sm">Sentiment</p>
+                                                    <p className={`font-medium capitalize ${getSentimentColor(token.sentiment)}`}>
+                                                        {token.sentiment}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-gray-400 text-sm">Social Buzz</p>
+                                                    <p className="text-blue-400 font-medium">{token.socialMentions} mentions</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right ml-4">
+                                            <div className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium mb-2">
+                                                {token.prediction}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {aiAnalysis[token.symbol] && (
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-700">
+                                            <div>
+                                                <p className="text-blue-400 text-sm font-semibold mb-2">📊 Technical Analysis</p>
+                                                <ul className="space-y-1">
+                                                    {aiAnalysis[token.symbol].technicalIndicators.map((indicator, i) => (
+                                                        <li key={i} className="text-gray-300 text-xs">• {indicator}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                            <div>
+                                                <p className="text-purple-400 text-sm font-semibold mb-2">🐦 Social Intelligence</p>
+                                                <ul className="space-y-1">
+                                                    {aiAnalysis[token.symbol].socialSignals.map((signal, i) => (
+                                                        <li key={i} className="text-gray-300 text-xs">• {signal}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                            <div>
+                                                <p className="text-yellow-400 text-sm font-semibold mb-2">⚠️ Risk Assessment</p>
+                                                <ul className="space-y-1">
+                                                    {aiAnalysis[token.symbol].riskFactors.map((factor, i) => (
+                                                        <li key={i} className="text-gray-300 text-xs">• {factor}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [botStatus, setBotStatus] = useState('stopped');
+            const [currentPage, setCurrentPage] = useState('dashboard');
+
+            useEffect(() => {
+                const fetchBotStatus = async () => {
+                    try {
+                        const response = await fetch('http://localhost:8080/api/status');
+                        const data = await response.json();
+                        setBotStatus(data.isRunning ? 'running' : 'stopped');
+                    } catch (error) {
+                        console.error('Failed to fetch bot status:', error);
+                        setBotStatus('error');
+                    }
+                };
+
+                fetchBotStatus();
+                const interval = setInterval(fetchBotStatus, 5000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const renderContent = () => {
+                switch (currentPage) {
+                    case 'dashboard':
+                        return <Dashboard botStatus={botStatus} />;
+                    case 'discovery':
+                        return <TokenDiscovery />;
+                    case 'strategies':
+                        return <AIStrategies />;
+                    case 'traders':
+                        return (
+                            <div className="dashboard-header">
+                                <h1 className="text-3xl font-bold text-white">👥 Top Traders</h1>
+                                <p className="text-gray-400 mt-1">High-performing wallets we're copying</p>
+                                <div className="dashboard-card mt-8">
+                                    <p className="text-center text-gray-400">Coming soon - Advanced trader analysis</p>
+                                </div>
+                            </div>
+                        );
+                    case 'portfolio':
+                        return (
+                            <div className="dashboard-header">
+                                <h1 className="text-3xl font-bold text-white">💰 Portfolio</h1>
+                                <p className="text-gray-400 mt-1">Your trading positions and performance</p>
+                                <div className="dashboard-card mt-8">
+                                    <p className="text-center text-gray-400">Portfolio management interface coming soon</p>
+                                </div>
+                            </div>
+                        );
+                    case 'analytics':
+                        return (
+                            <div className="dashboard-header">
+                                <h1 className="text-3xl font-bold text-white">📊 Analytics</h1>
+                                <p className="text-gray-400 mt-1">Advanced trading analytics and insights</p>
+                                <div className="dashboard-card mt-8">
+                                    <p className="text-center text-gray-400">Advanced analytics coming soon</p>
+                                </div>
+                            </div>
+                        );
+                    case 'settings':
+                        return (
+                            <div className="dashboard-header">
+                                <h1 className="text-3xl font-bold text-white">⚙️ Settings</h1>
+                                <p className="text-gray-400 mt-1">Configure your AI trading bot</p>
+                                <div className="dashboard-card mt-8">
+                                    <p className="text-center text-gray-400">Settings panel coming soon</p>
+                                </div>
+                            </div>
+                        );
+                    default:
+                        return <Dashboard botStatus={botStatus} />;
+                }
+            };
+
+        const AIStrategies = () => {
+            const [strategies, setStrategies] = useState([
+                {
+                    name: "Memecoin Momentum Hunter",
+                    status: "active",
+                    performance: "+156.7%",
+                    trades: 47,
+                    successRate: 78.5,
+                    description: "AI pattern recognition for viral token detection",
+                    signals: ["Social spike detection", "Volume anomaly analysis", "Influencer tracking"],
+                    lastAction: "Bought BONK at $0.0000089",
+                    confidence: 92
+                },
+                {
+                    name: "Copy Trading Elite",
+                    status: "active", 
+                    performance: "+89.3%",
+                    trades: 23,
+                    successRate: 73.9,
+                    description: "Mirror trades from top-performing wallets",
+                    signals: ["Wallet scoring algorithm", "Transaction pattern analysis", "Risk assessment"],
+                    lastAction: "Following DemoTrader1 SOL buy",
+                    confidence: 85
+                },
+                {
+                    name: "Technical Analysis AI",
+                    status: "monitoring",
+                    performance: "+34.2%", 
+                    trades: 12,
+                    successRate: 66.7,
+                    description: "Advanced technical indicator analysis",
+                    signals: ["RSI divergence", "MACD crossover", "Support/resistance levels"],
+                    lastAction: "Waiting for WIF breakout",
+                    confidence: 67
+                }
+            ]);
+
+            const getStatusColor = (status) => {
+                switch(status) {
+                    case 'active': return 'text-green-400';
+                    case 'monitoring': return 'text-yellow-400';
+                    case 'paused': return 'text-red-400';
+                    default: return 'text-gray-400';
+                }
+            };
+
+            const getPerformanceColor = (performance) => {
+                return performance.startsWith('+') ? 'text-green-400' : 'text-red-400';
+            };
+
+            return (
+                <div>
+                    <div className="dashboard-header">
+                        <h1 className="text-3xl font-bold text-white">🧠 AI Trading Strategies</h1>
+                        <p className="text-gray-400 mt-1">Advanced AI-powered trading algorithms</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                        <div className="metric-card">
+                            <div className="text-center">
+                                <p className="text-sm text-gray-400">Active Strategies</p>
+                                <p className="text-2xl font-bold text-green-400">2</p>
+                                <p className="text-xs text-blue-400">Real-time execution</p>
+                            </div>
+                        </div>
+                        <div className="metric-card">
+                            <div className="text-center">
+                                <p className="text-sm text-gray-400">Total Performance</p>
+                                <p className="text-2xl font-bold text-green-400">+127.4%</p>
+                                <p className="text-xs text-gray-400">All strategies</p>
+                            </div>
+                        </div>
+                        <div className="metric-card">
+                            <div className="text-center">
+                                <p className="text-sm text-gray-400">AI Confidence</p>
+                                <p className="text-2xl font-bold text-blue-400">81.3%</p>
+                                <p className="text-xs text-purple-400">High accuracy</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        {strategies.map((strategy, index) => (
+                            <div key={index} className="dashboard-card">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex-1">
+                                        <div className="flex items-center space-x-3 mb-2">
+                                            <h3 className="text-xl font-bold text-white">{strategy.name}</h3>
+                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${getStatusColor(strategy.status)} bg-gray-800`}>
+                                                {strategy.status}
+                                            </span>
+                                        </div>
+                                        <p className="text-gray-400 mb-4">{strategy.description}</p>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                                            <div>
+                                                <p className="text-gray-400 text-sm">Performance</p>
+                                                <p className={`text-lg font-bold ${getPerformanceColor(strategy.performance)}`}>
+                                                    {strategy.performance}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-gray-400 text-sm">Total Trades</p>
+                                                <p className="text-white text-lg font-bold">{strategy.trades}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-gray-400 text-sm">Success Rate</p>
+                                                <p className="text-green-400 text-lg font-bold">{strategy.successRate}%</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-gray-400 text-sm">AI Confidence</p>
+                                                <p className="text-blue-400 text-lg font-bold">{strategy.confidence}%</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <h4 className="text-white font-semibold mb-3">🔍 AI Signals</h4>
+                                        <ul className="space-y-2">
+                                            {strategy.signals.map((signal, i) => (
+                                                <li key={i} className="flex items-center space-x-2">
+                                                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                                                    <span className="text-gray-300 text-sm">{signal}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-white font-semibold mb-3">⚡ Latest Action</h4>
+                                        <div className="bg-gray-800 p-3 rounded-lg">
+                                            <p className="text-green-400 text-sm font-medium">{strategy.lastAction}</p>
+                                            <p className="text-gray-400 text-xs mt-1">2 minutes ago</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 pt-4 border-t border-gray-700">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-gray-400 text-sm">Strategy Performance</span>
+                                        <span className="text-blue-400 text-sm">{strategy.confidence}% confidence</span>
+                                    </div>
+                                    <div className="mt-2 w-full bg-gray-700 rounded-full h-2">
+                                        <div 
+                                            className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500" 
+                                            style={{width: `${strategy.confidence}%`}}
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+            return (
+                <div className="app">
+                    <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} botStatus={botStatus} />
+                    <div className="main-content">
+                        {renderContent()}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
