@@ -24,17 +24,20 @@ The dashboard is deployed on Netlify and ready to use!
 ## 📊 Trading Features
 
 ### Copy Trading
+
 - 25+ curated Solana trader wallets
 - Real-time trade replication
 - Performance tracking and analytics
 
-### Leverage Trading  
+### Leverage Trading
+
 - Jupiter Perpetuals integration
 - Up to 20x leverage on major tokens
 - LONG/SHORT positions
 - Market and Limit orders
 
 ### AI Intelligence
+
 - Machine learning trade analysis
 - Risk management algorithms
 - Automated position sizing
