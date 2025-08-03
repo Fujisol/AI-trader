@@ -207,7 +207,11 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        console.log('🚀 Starting React App...');
+        
+        try {
+            const { useState, useEffect } = React;
+            console.log('✅ React hooks imported successfully');
 
         // Copy Trading Wallets
         const COPY_TRADING_WALLETS = [
@@ -938,7 +942,7 @@
                                     <p style={{fontSize: '0.875rem', color: '#9CA3AF'}}>Active Trades</p>
                                     <p style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#10B981'}}>{activeTrades.length}</p>
                                 </div>
-                                <span style={{fontSize: '1.5rem'}}>�</span>
+                                <span style={{fontSize: '1.5rem'}}>🔥</span>
                             </div>
                         </div>
 
@@ -2477,7 +2481,20 @@
                 </div>
             );
 
+        console.log('🎯 About to render App component...');
         ReactDOM.render(<App />, document.getElementById('root'));
+        console.log('✅ App rendered successfully!');
+        
+        } catch (error) {
+            console.error('❌ React App Error:', error);
+            document.getElementById('root').innerHTML = `
+                <div style="padding: 20px; background: #111; color: white; font-family: monospace;">
+                    <h1>⚠️ Application Error</h1>
+                    <p>Error: ${error.message}</p>
+                    <p>Stack: ${error.stack}</p>
+                </div>
+            `;
+        }
     </script>
 </body>
 </html>
