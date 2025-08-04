@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        console.log('🚀 Test React script loading...');
+        const { useState } = React;
+        console.log('✅ React hooks imported successfully');
+
+        const TestApp = () => {
+            const [message, setMessage] = useState('Hello World!');
+            console.log('🎯 TestApp component rendering...');
+            
+            return (
+                <div style={{padding: '20px', background: '#111', color: 'white', minHeight: '100vh'}}>
+                    <h1>🤖 AI Trader Test</h1>
+                    <p>{message}</p>
+                    <button onClick={() => setMessage('React is working!')}>
+                        Test Button
+                    </button>
+                </div>
+            );
+        };
+
+        console.log('🎯 About to render TestApp component...');
+        ReactDOM.render(<TestApp />, document.getElementById('root'));
+        console.log('✅ TestApp rendered successfully!');
+    </script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Crypto Trading Bot Dashboard</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .dashboard-card {
+            background: linear-gradient(145deg, #1f2937 0%, #111827 100%);
+            border: 1px solid #374151;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .form-input {
+            background: #374151;
+            border: 1px solid #4B5563;
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        console.log('🚀 React script loading...');
+        const { useState, useEffect } = React;
+        console.log('✅ React hooks imported successfully');
+
+        // Main App Component
+        const App = () => {
+            const [currentPage, setCurrentPage] = useState('dashboard');
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [currentUser, setCurrentUser] = useState(null);
+
+            // Authentication Functions
+            const login = (email, password) => {
+                if (email === 'fujii.pixel@gmail.com' && password === 'admin123') {
+                    setCurrentUser({ email, isAdmin: true });
+                    setIsAuthenticated(true);
+                    return true;
+                } else if (email && password) {
+                    setCurrentUser({ email, isAdmin: false });
+                    setIsAuthenticated(true);
+                    return true;
+                }
+                return false;
+            };
+
+            const logout = () => {
+                setCurrentUser(null);
+                setIsAuthenticated(false);
+                setCurrentPage('dashboard');
+            };
+
+            // Login/Register Component
+            const LoginRegister = () => {
+                const [isLogin, setIsLogin] = useState(true);
+                const [email, setEmail] = useState('');
+                const [password, setPassword] = useState('');
+                const [error, setError] = useState('');
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    setError('');
+                    
+                    const success = login(email, password);
+                    
+                    if (!success) {
+                        setError('Invalid credentials. Try fujii.pixel@gmail.com with admin123 for admin access.');
+                    }
+                };
+
+                return (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 10000
+                    }}>
+                        <div className="dashboard-card" style={{minWidth: '400px'}}>
+                            <div style={{textAlign: 'center', marginBottom: '32px'}}>
+                                <div style={{fontSize: '3rem', marginBottom: '16px'}}>🤖</div>
+                                <h1 style={{fontSize: '2rem', fontWeight: 'bold', marginBottom: '8px'}}>
+                                    AI Trader
+                                </h1>
+                                <p style={{color: '#9CA3AF'}}>Secure access to your trading dashboard</p>
+                            </div>
+
+                            <form onSubmit={handleSubmit}>
+                                <div style={{marginBottom: '20px'}}>
+                                    <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>
+                                        Email Address
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="Enter your email..."
+                                        required
+                                        className="form-input"
+                                    />
+                                </div>
+
+                                <div style={{marginBottom: '24px'}}>
+                                    <label style={{display: 'block', color: '#9CA3AF', marginBottom: '8px', fontSize: '0.875rem'}}>
+                                        Password
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="Enter your password..."
+                                        required
+                                        className="form-input"
+                                    />
+                                </div>
+
+                                {error && (
+                                    <div style={{
+                                        marginBottom: '20px',
+                                        padding: '12px',
+                                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                                        borderRadius: '8px',
+                                        color: '#EF4444',
+                                        fontSize: '0.875rem'
+                                    }}>
+                                        {error}
+                                    </div>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    className="btn-primary"
+                                    style={{width: '100%', marginBottom: '16px'}}
+                                >
+                                    {isLogin ? '🔐 Sign In' : '📝 Create Account'}
+                                </button>
+                            </form>
+
+                            <div style={{
+                                marginTop: '24px',
+                                padding: '12px',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                borderRadius: '8px',
+                                fontSize: '0.75rem',
+                                color: '#9CA3AF'
+                            }}>
+                                <strong style={{color: '#3B82F6'}}>Demo Credentials:</strong><br />
+                                Admin: fujii.pixel@gmail.com / admin123<br />
+                                Or create any account to start trading!
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Dashboard Component
+            const Dashboard = () => (
+                <div style={{padding: '20px'}}>
+                    <div style={{marginBottom: '32px'}}>
+                        <h1 style={{fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '8px'}}>
+                            🤖 AI Trading Dashboard
+                        </h1>
+                        <p style={{color: '#9CA3AF'}}>Enhanced copy trading with AI intelligence</p>
+                    </div>
+
+                    <div className="dashboard-card">
+                        <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px'}}>
+                            🎉 Dashboard Successfully Fixed!
+                        </h3>
+                        <p style={{color: '#9CA3AF', marginBottom: '16px'}}>
+                            This is a simplified version of the AI Trading Dashboard. The white screen issue has been resolved!
+                        </p>
+                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px'}}>
+                            <div style={{padding: '16px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                <div style={{fontSize: '2rem', marginBottom: '8px'}}>👥</div>
+                                <h4>Copy Trading</h4>
+                                <p style={{fontSize: '0.875rem', color: '#9CA3AF'}}>Follow top traders</p>
+                            </div>
+                            <div style={{padding: '16px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                <div style={{fontSize: '2rem', marginBottom: '8px'}}>⚡</div>
+                                <h4>Leverage Trading</h4>
+                                <p style={{fontSize: '0.875rem', color: '#9CA3AF'}}>Trade with leverage</p>
+                            </div>
+                            <div style={{padding: '16px', backgroundColor: '#374151', borderRadius: '8px'}}>
+                                <div style={{fontSize: '2rem', marginBottom: '8px'}}>🎰</div>
+                                <h4>Degen Mode</h4>
+                                <p style={{fontSize: '0.875rem', color: '#9CA3AF'}}>High-risk trading</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="dashboard-card">
+                        <h3 style={{fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px'}}>
+                            User Information
+                        </h3>
+                        <p><strong>Logged in as:</strong> {currentUser?.email}</p>
+                        <p><strong>Admin Status:</strong> {currentUser?.isAdmin ? 'Yes' : 'No'}</p>
+                        <button onClick={logout} className="btn-primary" style={{marginTop: '16px'}}>
+                            🚪 Logout
+                        </button>
+                    </div>
+                </div>
+            );
+
+            // Main render - show login if not authenticated
+            if (!isAuthenticated) {
+                return <LoginRegister />;
+            }
+
+            return <Dashboard />;
+        };
+
+        console.log('🎯 About to render App component...');
+        ReactDOM.render(<App />, document.getElementById('root'));
+        console.log('✅ App rendered successfully!');
+    </script>
+</body>
+</html>
