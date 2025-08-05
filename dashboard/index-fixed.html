@@ -6,6 +6,7 @@
     <title>🤖 AI Crypto Trading Bot Dashboard</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom-client.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         body {
@@ -256,7 +257,8 @@
         };
 
         console.log('🎯 About to render App component...');
-        ReactDOM.render(<App />, document.getElementById('root'));
+        const root = ReactDOMClient.createRoot(document.getElementById('root'));
+        root.render(<App />);
         console.log('✅ App rendered successfully!');
     </script>
 </body>

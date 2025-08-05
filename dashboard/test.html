@@ -32,7 +32,8 @@
         };
 
         console.log('🎯 About to render TestApp component...');
-        ReactDOM.render(<TestApp />, document.getElementById('root'));
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<TestApp />);
         console.log('✅ TestApp rendered successfully!');
     </script>
 </body>

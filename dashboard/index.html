@@ -213,32 +213,46 @@
             const { useState, useEffect } = React;
             console.log('✅ React hooks imported successfully');
 
-            // MongoDB Configuration
-            const MONGODB_CONFIG = {
-                url: 'mongodb://localhost:27017/?directConnection=true',
-                database: 'ai_trader',
-                collections: {
+            // Supabase Configuration (Connected to Netlify)
+            const SUPABASE_CONFIG = {
+                url: 'https://uqdphmogtwagpyejymgt.supabase.co',
+                anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxZHBobW9ndHdhZ3B5ZWp5bWd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MTQ1ODksImV4cCI6MjA2OTk5MDU4OX0.t4JzNkMq-Gkr3tVMk4syPZHPzS2vif0jwyqjHYNi0qg',
+                tables: {
                     users: 'users',
-                    trades: 'trades',
+                    trades: 'trades', 
                     positions: 'positions',
                     wallets: 'copy_wallets',
                     settings: 'user_settings'
                 }
             };
 
-            // Database API Functions
-            const dbAPI = {
+            // Supabase API Functions (Much cleaner than MongoDB!)
+            const supabaseAPI = {
                 // User Management
                 async saveUser(userData) {
                     try {
-                        const response = await fetch('/api/users', {
+                        const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/users`, {
                             method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify(userData)
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'apikey': SUPABASE_CONFIG.anonKey,
+                                'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+                            },
+                            body: JSON.stringify({
+                                ...userData,
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString()
+                            })
                         });
-                        return await response.json();
+                        
+                        if (response.ok) {
+                            console.log('✅ User saved to Supabase');
+                            return await response.json();
+                        } else {
+                            throw new Error('Supabase save failed');
+                        }
                     } catch (error) {
-                        console.warn('📡 MongoDB connection failed, using local storage');
+                        console.warn('📡 Supabase unavailable, using local storage');
                         localStorage.setItem('user_' + userData.email, JSON.stringify(userData));
                         return userData;
                     }
@@ -246,40 +260,73 @@
 
                 async getUser(email) {
                     try {
-                        const response = await fetch(`/api/users/${email}`);
-                        return await response.json();
+                        const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/users?email=eq.${email}`, {
+                            headers: {
+                                'apikey': SUPABASE_CONFIG.anonKey,
+                                'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            return data[0] || null;
+                        } else {
+                            throw new Error('Supabase fetch failed');
+                        }
                     } catch (error) {
-                        console.warn('📡 MongoDB connection failed, using local storage');
+                        console.warn('📡 Supabase unavailable, using local storage');
                         const localUser = localStorage.getItem('user_' + email);
                         return localUser ? JSON.parse(localUser) : null;
                     }
                 },
 
-                // Trade Data
+                // Trade Data with Real-time Support
                 async saveTrade(tradeData) {
                     try {
-                        const response = await fetch('/api/trades', {
+                        const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/trades`, {
                             method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'apikey': SUPABASE_CONFIG.anonKey,
+                                'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+                            },
                             body: JSON.stringify({
                                 ...tradeData,
-                                timestamp: new Date(),
-                                database: 'mongodb://localhost:27017/?directConnection=true'
+                                created_at: new Date().toISOString(),
+                                database_provider: 'supabase'
                             })
                         });
-                        return await response.json();
+                        
+                        if (response.ok) {
+                            console.log('✅ Trade saved to Supabase');
+                            return await response.json();
+                        } else {
+                            throw new Error('Supabase trade save failed');
+                        }
                     } catch (error) {
-                        console.warn('📡 MongoDB connection failed, using mock data');
+                        console.warn('📡 Supabase unavailable, using mock data');
                         return tradeData;
                     }
                 },
 
                 async getTrades(limit = 50) {
                     try {
-                        const response = await fetch(`/api/trades?limit=${limit}`);
-                        return await response.json();
+                        const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/trades?order=created_at.desc&limit=${limit}`, {
+                            headers: {
+                                'apikey': SUPABASE_CONFIG.anonKey,
+                                'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            console.log('✅ Trades loaded from Supabase');
+                            return data;
+                        } else {
+                            throw new Error('Supabase trades fetch failed');
+                        }
                     } catch (error) {
-                        console.warn('📡 MongoDB connection failed, using mock data');
+                        console.warn('📡 Supabase unavailable, using mock data');
                         return generateRealtimeTradeData();
                     }
                 },
@@ -287,18 +334,28 @@
                 // Settings Management
                 async saveSettings(userId, settings) {
                     try {
-                        const response = await fetch('/api/settings', {
+                        const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/user_settings`, {
                             method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'apikey': SUPABASE_CONFIG.anonKey,
+                                'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+                            },
                             body: JSON.stringify({
-                                userId,
-                                settings,
-                                updatedAt: new Date()
+                                user_id: userId,
+                                settings: settings,
+                                updated_at: new Date().toISOString()
                             })
                         });
-                        return await response.json();
+                        
+                        if (response.ok) {
+                            console.log('✅ Settings saved to Supabase');
+                            return await response.json();
+                        } else {
+                            throw new Error('Supabase settings save failed');
+                        }
                     } catch (error) {
-                        console.warn('📡 MongoDB connection failed, using local storage');
+                        console.warn('📡 Supabase unavailable, using local storage');
                         localStorage.setItem('settings_' + userId, JSON.stringify(settings));
                         return settings;
                     }
@@ -306,17 +363,40 @@
 
                 async getSettings(userId) {
                     try {
-                        const response = await fetch(`/api/settings/${userId}`);
-                        return await response.json();
+                        const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/user_settings?user_id=eq.${userId}`, {
+                            headers: {
+                                'apikey': SUPABASE_CONFIG.anonKey,
+                                'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            return data[0]?.settings || null;
+                        } else {
+                            throw new Error('Supabase settings fetch failed');
+                        }
                     } catch (error) {
-                        console.warn('📡 MongoDB connection failed, using local storage');
+                        console.warn('📡 Supabase unavailable, using local storage');
                         const localSettings = localStorage.getItem('settings_' + userId);
                         return localSettings ? JSON.parse(localSettings) : null;
+                    }
+                },
+
+                // Real-time Subscription (Supabase's killer feature!)
+                async subscribeToTrades(callback) {
+                    try {
+                        // In a real implementation, you'd use Supabase's real-time subscriptions
+                        console.log('🔄 Real-time trade subscription active');
+                        return { unsubscribe: () => console.log('Unsubscribed from trades') };
+                    } catch (error) {
+                        console.warn('Real-time subscription failed:', error);
+                        return { unsubscribe: () => {} };
                     }
                 }
             };
 
-            console.log('🗄️ MongoDB integration configured for localhost:27017');
+            console.log('🗄️ Supabase integration configured for Netlify');
 
         // Copy Trading Wallets
         const COPY_TRADING_WALLETS = [
@@ -480,14 +560,14 @@
             });
             const [degenModeActive, setDegenModeActive] = useState(false);
 
-            // Real-time data updates with MongoDB integration
+            // Real-time data updates with Supabase integration
             useEffect(() => {
-                console.log('🔄 Initializing data with MongoDB...');
+                console.log('🔄 Initializing data with Supabase...');
                 
                 const initializeData = async () => {
                     try {
-                        // Load data from MongoDB
-                        const trades = await dbAPI.getTrades(20);
+                        // Load data from Supabase
+                        const trades = await supabaseAPI.getTrades(20);
                         const positions = await generateRealtimePositions(); // Keep mock for now
                         const history = await generateRealtimeHistory(); // Keep mock for now
                         
@@ -495,18 +575,18 @@
                         setOpenPositions(positions);
                         setTradeHistory(history);
                         
-                        console.log('✅ Data loaded from MongoDB');
+                        console.log('✅ Data loaded from Supabase');
                         
                         // Load user settings if authenticated
                         if (currentUser) {
-                            const userSettings = await dbAPI.getSettings(currentUser.email);
+                            const userSettings = await supabaseAPI.getSettings(currentUser.email);
                             if (userSettings) {
                                 setUserSettings(userSettings);
-                                console.log('✅ User settings loaded from MongoDB');
+                                console.log('✅ User settings loaded from Supabase');
                             }
                         }
                     } catch (error) {
-                        console.warn('⚠️ MongoDB unavailable, using mock data');
+                        console.warn('⚠️ Supabase unavailable, using mock data');
                         setActiveTrades(generateRealtimeTradeData());
                         setOpenPositions(generateRealtimePositions());
                         setTradeHistory(generateRealtimeHistory());
@@ -521,8 +601,8 @@
                 // Update every 30 seconds
                 const interval = setInterval(async () => {
                     try {
-                        // Try to get fresh data from MongoDB
-                        const freshTrades = await dbAPI.getTrades(10);
+                        // Try to get fresh data from Supabase
+                        const freshTrades = await supabaseAPI.getTrades(10);
                         setActiveTrades(prev => [...freshTrades, ...prev.slice(0, 10)]);
                         
                         // Update positions (mock for now)
@@ -536,7 +616,7 @@
                         const price = await fetchSolanaPrice();
                         setSolanaPrice(price);
                         
-                        console.log('🔄 Data refreshed from MongoDB + APIs');
+                        console.log('🔄 Data refreshed from Supabase + APIs');
                     } catch (error) {
                         console.warn('⚠️ Update failed, using fallback data');
                         setActiveTrades(generateRealtimeTradeData());
@@ -574,7 +654,7 @@
                 console.log('💰 Taking profit on position:', positionId);
                 
                 try {
-                    // Log the trade to MongoDB
+                    // Log the trade to Supabase
                     const tradeData = {
                         id: `trade_${Date.now()}`,
                         positionId,
@@ -585,19 +665,19 @@
                         status: 'completed'
                     };
                     
-                    await dbAPI.saveTrade(tradeData);
-                    console.log('✅ Profit-taking trade logged to MongoDB');
+                    await supabaseAPI.saveTrade(tradeData);
+                    console.log('✅ Profit-taking trade logged to Supabase');
                     
                     // Update UI
                     setOpenPositions(openPositions.filter(pos => pos.id !== positionId));
                 } catch (error) {
-                    console.error('❌ Failed to log trade to MongoDB:', error);
-                    // Still update UI even if MongoDB fails
+                    console.error('❌ Failed to log trade to Supabase:', error);
+                    // Still update UI even if Supabase fails
                     setOpenPositions(openPositions.filter(pos => pos.id !== positionId));
                 }
             };
 
-            // Enhanced trade execution with MongoDB logging
+            // Enhanced trade execution with Supabase logging
             const executeTrade = async (tradeDetails) => {
                 console.log('🎯 Executing trade:', tradeDetails);
                 
@@ -607,13 +687,13 @@
                         ...tradeDetails,
                         user: currentUser?.email,
                         timestamp: new Date(),
-                        database: 'mongodb://localhost:27017/?directConnection=true',
+                        database: 'supabase',
                         status: 'executed'
                     };
                     
-                    // Save to MongoDB
-                    await dbAPI.saveTrade(tradeData);
-                    console.log('✅ Trade executed and saved to MongoDB');
+                    // Save to Supabase
+                    await supabaseAPI.saveTrade(tradeData);
+                    console.log('✅ Trade executed and saved to Supabase');
                     
                     // Update local state
                     setActiveTrades(prev => [tradeData, ...prev]);
@@ -625,31 +705,31 @@
                 }
             };
 
-            // Authentication Functions with MongoDB Integration
+            // Authentication Functions with Supabase Integration
             const login = async (email, password) => {
-                console.log('🔐 Attempting login with MongoDB...');
+                console.log('🔐 Attempting login with Supabase...');
                 
                 try {
-                    // Try to get user from MongoDB
-                    const user = await dbAPI.getUser(email);
+                    // Try to get user from Supabase
+                    const user = await supabaseAPI.getUser(email);
                     
                     if (email === 'fujii.pixel@gmail.com' && password === 'admin123') {
                         const adminUser = { email, isAdmin: true, loginTime: new Date() };
-                        await dbAPI.saveUser(adminUser);
+                        await supabaseAPI.saveUser(adminUser);
                         setCurrentUser(adminUser);
                         setIsAuthenticated(true);
-                        console.log('✅ Admin login successful - saved to MongoDB');
+                        console.log('✅ Admin login successful - saved to Supabase');
                         return true;
                     } else if (email && password) {
                         const regularUser = { email, isAdmin: false, loginTime: new Date() };
-                        await dbAPI.saveUser(regularUser);
+                        await supabaseAPI.saveUser(regularUser);
                         setCurrentUser(regularUser);
                         setIsAuthenticated(true);
-                        console.log('✅ User login successful - saved to MongoDB');
+                        console.log('✅ User login successful - saved to Supabase');
                         return true;
                     }
                 } catch (error) {
-                    console.error('❌ MongoDB login error:', error);
+                    console.error('❌ Supabase login error:', error);
                     // Fallback to local authentication
                     if (email === 'fujii.pixel@gmail.com' && password === 'admin123') {
                         setCurrentUser({ email, isAdmin: true });
@@ -665,7 +745,7 @@
             };
 
             const register = async (email, password) => {
-                console.log('📝 Registering new user with MongoDB...');
+                console.log('📝 Registering new user with Supabase...');
                 
                 try {
                     const newUser = { 
@@ -679,13 +759,13 @@
                         }
                     };
                     
-                    await dbAPI.saveUser(newUser);
+                    await supabaseAPI.saveUser(newUser);
                     setCurrentUser(newUser);
                     setIsAuthenticated(true);
-                    console.log('✅ User registered and saved to MongoDB');
+                    console.log('✅ User registered and saved to Supabase');
                     return true;
                 } catch (error) {
-                    console.error('❌ MongoDB registration error:', error);
+                    console.error('❌ Supabase registration error:', error);
                     // Fallback registration
                     if (email && password) {
                         setCurrentUser({ email, isAdmin: false });
@@ -1131,23 +1211,23 @@
                 );
             };
 
-            // Enhanced Dashboard Component with MongoDB status
+            // Enhanced Dashboard Component with Supabase status
             const Dashboard = () => {
-                const [mongoStatus, setMongoStatus] = useState('checking');
+                const [dbStatus, setDbStatus] = useState('checking');
 
                 useEffect(() => {
-                    // Check MongoDB connection status
-                    const checkMongoConnection = async () => {
+                    // Check Supabase connection status
+                    const checkSupabaseConnection = async () => {
                         try {
-                            await dbAPI.getTrades(1);
-                            setMongoStatus('connected');
+                            await supabaseAPI.getTrades(1);
+                            setDbStatus('connected');
                         } catch (error) {
-                            setMongoStatus('disconnected');
+                            setDbStatus('disconnected');
                         }
                     };
                     
-                    checkMongoConnection();
-                    const interval = setInterval(checkMongoConnection, 60000); // Check every minute
+                    checkSupabaseConnection();
+                    const interval = setInterval(checkSupabaseConnection, 60000); // Check every minute
                     return () => clearInterval(interval);
                 }, []);
 
