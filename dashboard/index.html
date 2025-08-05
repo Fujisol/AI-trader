@@ -1404,7 +1404,7 @@
                 );
             };
                     return () => clearInterval(interval);
-                }, []);
+                }, [];
 
                 return (
                     <div>
@@ -3025,7 +3025,7 @@
         ReactDOM.render(<App />, document.getElementById('root'));
         console.log('✅ App rendered successfully!');
         
-        } catch (error) {
+         catch (error) {
             console.error('❌ React App Error:', error);
             document.getElementById('root').innerHTML = `
                 <div style="padding: 20px; background: #111; color: white; font-family: monospace;">
