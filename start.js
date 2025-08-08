@@ -29,17 +29,13 @@ if (!fs.existsSync(envPath)) {
 // Load environment variables
 require('dotenv').config();
 
-// Validate required environment variables
-const requiredEnvVars = [
-  'SOLANA_RPC_URL',
-  'TRADING_MODE'
-];
-
-const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-
-if (missingVars.length > 0) {
-  console.error('❌ Missing required environment variables:', missingVars.join(', '));
-  console.log('Please check your .env file and ensure all required variables are set.');
+// Centralized environment validation
+try {
+  const validateEnv = require('./src/utils/envValidator');
+  validateEnv();
+} catch (e) {
+  console.error('❌ Environment validation failed.');
+  console.error(e.message || e);
   process.exit(1);
 }
 
