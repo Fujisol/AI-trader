@@ -21,9 +21,9 @@ class APIRoutes {
     this.router.post('/proxy/trades', apiKeyAuth, this.proxySaveTrade.bind(this));
     this.router.get('/proxy/trades', this.proxyGetTrades.bind(this));
     this.router.post('/proxy/users', apiKeyAuth, this.proxySaveUser.bind(this));
-    this.router.get('/proxy/users/:email', apiKeyAuth, this.proxyGetUser.bind(this));
+    this.router.get('/proxy/users/:email', this.proxyGetUser.bind(this)); // removed apiKeyAuth for read
     this.router.post('/proxy/settings', apiKeyAuth, this.proxySaveSettings.bind(this));
-    this.router.get('/proxy/settings/:userId', apiKeyAuth, this.proxyGetSettings.bind(this));
+    this.router.get('/proxy/settings/:userId', this.proxyGetSettings.bind(this)); // removed apiKeyAuth for read
 
     // Trading controls
     this.router.post('/start', this.startBot.bind(this));
