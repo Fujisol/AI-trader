@@ -1,15 +1,30 @@
 const express = require('express');
 const Logger = require('../utils/Logger');
+const { apiKeyAuth } = require('../utils/authMiddleware');
+const SupabaseProxy = require('../services/SupabaseProxy');
 
 class APIRoutes {
   constructor(bot) {
     this.bot = bot;
     this.logger = new Logger('APIRoutes');
     this.router = express.Router();
+    this.supabaseProxy = new SupabaseProxy();
     this.setupRoutes();
   }
 
   setupRoutes() {
+    // Security middleware for mutating routes
+    this.router.post('/start', apiKeyAuth, this.startBot.bind(this));
+    this.router.post('/stop', apiKeyAuth, this.stopBot.bind(this));
+
+    // Proxy (secured) endpoints to centralize Supabase writes
+    this.router.post('/proxy/trades', apiKeyAuth, this.proxySaveTrade.bind(this));
+    this.router.get('/proxy/trades', this.proxyGetTrades.bind(this));
+    this.router.post('/proxy/users', apiKeyAuth, this.proxySaveUser.bind(this));
+    this.router.get('/proxy/users/:email', apiKeyAuth, this.proxyGetUser.bind(this));
+    this.router.post('/proxy/settings', apiKeyAuth, this.proxySaveSettings.bind(this));
+    this.router.get('/proxy/settings/:userId', apiKeyAuth, this.proxyGetSettings.bind(this));
+
     // Trading controls
     this.router.post('/start', this.startBot.bind(this));
     this.router.post('/stop', this.stopBot.bind(this));
@@ -854,6 +869,62 @@ class APIRoutes {
     } catch (error) {
       this.logger.error('Failed to get advanced signals:', error);
       res.status(500).json({ error: error.message });
+    }
+  }
+
+  async proxySaveTrade(req, res) {
+    try {
+      const id = await this.supabaseProxy.saveTrade(req.body);
+      res.json({ success: true, id });
+    } catch (e) {
+      this.logger.error('proxySaveTrade error', e);
+      res.status(500).json({ error: e.message });
+    }
+  }
+  async proxyGetTrades(req, res) {
+    try {
+      const limit = parseInt(req.query.limit) || 50;
+      const trades = await this.supabaseProxy.getTrades(limit);
+      res.json({ trades });
+    } catch (e) {
+      this.logger.error('proxyGetTrades error', e);
+      res.status(500).json({ error: e.message });
+    }
+  }
+  async proxySaveUser(req, res) {
+    try {
+      const user = await this.supabaseProxy.saveUser(req.body);
+      res.json({ success: true, user });
+    } catch (e) {
+      this.logger.error('proxySaveUser error', e);
+      res.status(500).json({ error: e.message });
+    }
+  }
+  async proxyGetUser(req, res) {
+    try {
+      const user = await this.supabaseProxy.getUser(req.params.email);
+      res.json({ user });
+    } catch (e) {
+      this.logger.error('proxyGetUser error', e);
+      res.status(500).json({ error: e.message });
+    }
+  }
+  async proxySaveSettings(req, res) {
+    try {
+      const settings = await this.supabaseProxy.saveSettings(req.body.userId, req.body.settings);
+      res.json({ success: true, settings });
+    } catch (e) {
+      this.logger.error('proxySaveSettings error', e);
+      res.status(500).json({ error: e.message });
+    }
+  }
+  async proxyGetSettings(req, res) {
+    try {
+      const settings = await this.supabaseProxy.getSettings(req.params.userId);
+      res.json({ settings });
+    } catch (e) {
+      this.logger.error('proxyGetSettings error', e);
+      res.status(500).json({ error: e.message });
     }
   }
 
