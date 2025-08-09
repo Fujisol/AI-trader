@@ -1,0 +1,54 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai_trader_postgres
+    environment:
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD:-changeme}
+      POSTGRES_USER: postgres
+      POSTGRES_DB: ai_trader
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai_trader_redis
+    ports:
+      - "6380:6379"
+    command: ["redis-server","--save","","--appendonly","no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: ai_trader_app
+    command: sh -c "npm install && npm run start"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:${LOCAL_DB_PASSWORD:-changeme}@postgres:5432/ai_trader
+      TRADING_MODE: paper
+      SOLANA_RPC_URL: https://api.mainnet-beta.solana.com
+      LOG_LEVEL: info
+      API_PORT: 8080
+      DASHBOARD_PORT: 3000
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./:/usr/src/app
+
+volumes:
+  pg_data:
