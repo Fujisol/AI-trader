@@ -13,15 +13,18 @@ class Database {
 
   async connect() {
     try {
-      // Prefer Postgres/Supabase if DATABASE_URL provided
       const pgUrl = process.env.DATABASE_URL;
       if (pgUrl && /postgres/.test(pgUrl)) {
-        if (!pg) pg = require('postgres');
-        this.pg = pg(pgUrl, { prepare: true, max: 5 });
-        this.isPostgres = true;
-        await this._initPostgres();
-        this.logger.info('✅ Connected to PostgreSQL (Supabase)');
-        return;
+        try {
+          if (!pg) pg = require('postgres');
+          this.pg = pg(pgUrl, { prepare: true, max: 5, idle_timeout: 5 });
+          await this._initPostgres();
+          this.isPostgres = true;
+          this.logger.info('✅ Connected to PostgreSQL (Supabase)');
+          return;
+        } catch (pgErr) {
+          this.logger.warn('Postgres connection failed, falling back to MongoDB', pgErr);
+        }
       }
 
       // Fallback to MongoDB (legacy) if no Postgres URL
